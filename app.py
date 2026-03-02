@@ -596,13 +596,11 @@ if not st.session_state.portfolio_submitted:
             unsafe_allow_html=True,
         )
 
-        num = st.number_input(
-            "How many stocks?", min_value=1, max_value=20, value=st.session_state.num_stocks,
-            key="num_input",
-        )
-        st.session_state.num_stocks = num
-
         with st.form("portfolio_form"):
+            num = st.number_input(
+                "How many stocks?", min_value=1, max_value=20, value=st.session_state.num_stocks,
+                key="num_input",
+            )
             form_tickers = []
             for i in range(int(num)):
                 st.markdown(
@@ -625,6 +623,7 @@ if not st.session_state.portfolio_submitted:
             )
 
         if submitted:
+            st.session_state.num_stocks = int(num)
             stocks_input = []
             for ticker, shares, avg_cost in form_tickers:
                 tk = ticker.upper().strip()
