@@ -9,5 +9,4 @@ finnhub-python
 beautifulsoup4
 numpy
 feedparser
-pyfinviz
 streamlit
