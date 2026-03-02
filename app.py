@@ -219,7 +219,7 @@ def send_user_email(recipient: str, holdings: list[dict], risk_d: dict,
     sender = os.getenv("SENDER_EMAIL")
     password = os.getenv("EMAIL_PASSWORD")
     if not sender or not password:
-        return False
+        return False, "EMAIL_PASSWORD or SENDER_EMAIL not configured in Streamlit secrets"
 
     today_s = datetime.date.today().strftime("%A, %B %d, %Y")
     now_s = datetime.datetime.now().strftime("%I:%M %p")
@@ -302,13 +302,19 @@ def send_user_email(recipient: str, holdings: list[dict], risk_d: dict,
     msg.attach(MIMEText(html, "html"))
 
     try:
-        with smtplib.SMTP("smtp.gmail.com", 587) as srv:
-            srv.starttls()
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=15) as srv:
             srv.login(sender, password)
             srv.sendmail(sender, recipient, msg.as_string())
-        return True
-    except Exception:
-        return False
+        return True, None
+    except Exception as exc:
+        try:
+            with smtplib.SMTP("smtp.gmail.com", 587, timeout=15) as srv:
+                srv.starttls()
+                srv.login(sender, password)
+                srv.sendmail(sender, recipient, msg.as_string())
+            return True, None
+        except Exception as exc2:
+            return False, str(exc2)
 
 
 # ═════════════════════════════════════════════════════════════════
@@ -512,9 +518,10 @@ if st.session_state.portfolio_submitted:
 
     # Send email if provided
     email_sent = False
+    email_error = None
     if user_email and "@" in user_email:
         with st.spinner("Sending report to your email..."):
-            email_sent = send_user_email(user_email, holdings, risk_d, sp, picks_m, picks_s)
+            email_sent, email_error = send_user_email(user_email, holdings, risk_d, sp, picks_m, picks_s)
 
     # ── HEADER ──
     mood_c = GREEN if sp["spy_mood"] == "Bullish" else RED if sp["spy_mood"] == "Bearish" else AMBER
@@ -540,7 +547,8 @@ if st.session_state.portfolio_submitted:
     if email_sent:
         st.success(f"Report sent to {user_email}!")
     elif user_email:
-        st.warning("Could not send email -- but your dashboard is ready below.")
+        detail = f" ({email_error})" if email_error else ""
+        st.warning(f"Could not send email{detail} -- but your dashboard is ready below.")
 
     # ── KPI ROW ──
     tv = sum(h["market_value"] for h in holdings)
