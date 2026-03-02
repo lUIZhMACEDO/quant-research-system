@@ -453,20 +453,25 @@ def send_user_email(recipient: str, holdings: list[dict], risk_d: dict,
     msg.attach(MIMEText(text, "plain"))
     msg.attach(MIMEText(html, "html"))
 
+    raw = msg.as_string()
+    recipients = [recipient]
+
     try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=15) as srv:
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=20) as srv:
+            srv.ehlo()
+            srv.starttls()
+            srv.ehlo()
             srv.login(sender, password)
-            srv.sendmail(sender, recipient, msg.as_string())
+            srv.sendmail(sender, recipients, raw)
         return True, None
-    except Exception:
+    except Exception as exc1:
         try:
-            with smtplib.SMTP("smtp.gmail.com", 587, timeout=15) as srv:
-                srv.starttls()
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=20) as srv:
                 srv.login(sender, password)
-                srv.sendmail(sender, recipient, msg.as_string())
+                srv.sendmail(sender, recipients, raw)
             return True, None
         except Exception as exc2:
-            return False, str(exc2)
+            return False, f"STARTTLS: {exc1} | SSL: {exc2}"
 
 
 # ═════════════════════════════════════════════════════════════════
@@ -658,22 +663,68 @@ if st.session_state.portfolio_submitted:
     user_portfolio = st.session_state.user_portfolio
     user_email = st.session_state.user_email
 
-    # Load shared market data
+    # ── Loading screen ──
+    loading = st.empty()
+    loading.markdown(f"""
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
+                min-height:60vh;text-align:center;">
+      <style>
+        @keyframes pulse-ring {{
+          0% {{ transform: scale(0.8); opacity: 1; }}
+          50% {{ transform: scale(1.2); opacity: 0.4; }}
+          100% {{ transform: scale(0.8); opacity: 1; }}
+        }}
+        @keyframes bar-fill {{
+          0% {{ width: 0%; }}
+          20% {{ width: 25%; }}
+          50% {{ width: 55%; }}
+          80% {{ width: 80%; }}
+          100% {{ width: 95%; }}
+        }}
+        .load-icon {{
+          width: 80px; height: 80px; border-radius: 50%;
+          background: linear-gradient(135deg, {AMBER}, {GREEN});
+          display: flex; align-items: center; justify-content: center;
+          animation: pulse-ring 1.5s ease-in-out infinite;
+          margin-bottom: 24px;
+        }}
+        .load-bar-bg {{
+          width: 280px; height: 6px; background: {CARD}; border-radius: 3px;
+          overflow: hidden; margin-top: 20px;
+        }}
+        .load-bar-fill {{
+          height: 100%; background: linear-gradient(90deg, {AMBER}, {GREEN});
+          border-radius: 3px; animation: bar-fill 8s ease-out forwards;
+        }}
+      </style>
+      <div class="load-icon">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="{CARD}" stroke-width="2.5"
+             stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+      </div>
+      <div style="font-size:22px;font-weight:800;color:{WHITE};">Analyzing Your Portfolio</div>
+      <div id="load-status" style="font-size:13px;color:{DIM};margin-top:8px;">
+        Fetching live market data...</div>
+      <div class="load-bar-bg"><div class="load-bar-fill"></div></div>
+      <div style="margin-top:24px;font-size:11px;color:{DIM};max-width:320px;line-height:1.6;">
+        Computing technical indicators, fetching analyst ratings,<br>
+        scanning news, and building your risk dashboard.
+      </div>
+    </div>""", unsafe_allow_html=True)
+
     sp = load_market()
     picks_m, picks_s = load_picks()
     macro, catalysts = load_news()
+    holdings = analyse_user_portfolio(user_portfolio)
+    risk_d = compute_risk_dashboard(holdings)
 
-    # Analyse user's specific portfolio
-    with st.spinner("Analyzing your portfolio..."):
-        holdings = analyse_user_portfolio(user_portfolio)
-        risk_d = compute_risk_dashboard(holdings)
-
-    # Send email if provided
     email_sent = False
     email_error = None
     if user_email and "@" in user_email:
-        with st.spinner("Sending report to your email..."):
-            email_sent, email_error = send_user_email(user_email, holdings, risk_d, sp, picks_m, picks_s)
+        email_sent, email_error = send_user_email(user_email, holdings, risk_d, sp, picks_m, picks_s)
+
+    loading.empty()
 
     # ── HEADER ──
     mood_c = GREEN if sp["spy_mood"] == "Bullish" else RED if sp["spy_mood"] == "Bearish" else AMBER
