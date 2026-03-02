@@ -329,10 +329,10 @@ def send_user_email(recipient: str, holdings: list[dict], risk_d: dict,
     risk_rows = ""
     for p in risk_d.get("positions", []):
         risk_rows += f"""<tr style="background:{C};">
-          <td style="padding:6px 10px;color:{W};font-weight:700;border-bottom:1px solid {BD};">{p[0]}</td>
-          <td style="padding:6px 10px;color:{T};border-bottom:1px solid {BD};">{p[1]:.1f}%</td>
-          <td style="padding:6px 10px;color:{T};border-bottom:1px solid {BD};">{p[2]:.2f}</td>
-          <td style="padding:6px 10px;color:{T};border-bottom:1px solid {BD};">${p[3]:,.2f}</td>
+          <td style="padding:6px 10px;color:{W};font-weight:700;border-bottom:1px solid {BD};">{p["ticker"]}</td>
+          <td style="padding:6px 10px;color:{T};border-bottom:1px solid {BD};">{p["weight"]:.1f}%</td>
+          <td style="padding:6px 10px;color:{T};border-bottom:1px solid {BD};">{p["beta"]:.2f}</td>
+          <td style="padding:6px 10px;color:{T};border-bottom:1px solid {BD};">${p["risk_1d"]:,.2f}</td>
         </tr>"""
 
     sector_html = ""
