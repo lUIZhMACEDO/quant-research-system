@@ -10,3 +10,4 @@ beautifulsoup4
 numpy
 feedparser
 pyfinviz
+streamlit
