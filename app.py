@@ -602,36 +602,41 @@ if not st.session_state.portfolio_submitted:
         )
         st.session_state.num_stocks = num
 
-        stocks_input = []
-        for i in range(int(num)):
-            st.markdown(
-                f'<div style="font-size:12px;color:{AMBER};font-weight:600;margin-top:10px;">'
-                f'Stock #{i+1}</div>',
-                unsafe_allow_html=True,
-            )
-            c1, c2, c3 = st.columns(3)
-            ticker = c1.text_input("Ticker", key=f"ticker_{i}", placeholder="e.g. AAPL").upper().strip()
-            shares = c2.number_input("Shares", min_value=0.0, step=1.0, key=f"shares_{i}", value=0.0)
-            avg_cost = c3.number_input("Avg Cost ($)", min_value=0.0, step=0.01, key=f"avg_{i}", value=0.0)
-            if ticker and shares > 0 and avg_cost > 0:
-                stocks_input.append({"ticker": ticker, "shares": shares, "avg_cost": avg_cost})
+        with st.form("portfolio_form"):
+            form_tickers = []
+            for i in range(int(num)):
+                st.markdown(
+                    f'<div style="font-size:12px;color:{AMBER};font-weight:600;margin-top:10px;">'
+                    f'Stock #{i+1}</div>',
+                    unsafe_allow_html=True,
+                )
+                c1, c2, c3 = st.columns(3)
+                ticker = c1.text_input("Ticker", key=f"ticker_{i}", placeholder="e.g. AAPL")
+                shares = c2.number_input("Shares", min_value=0.0, step=1.0, key=f"shares_{i}", value=0.0)
+                avg_cost = c3.number_input("Avg Cost ($)", min_value=0.0, step=0.01, key=f"avg_{i}", value=0.0)
+                form_tickers.append((ticker, shares, avg_cost))
 
-        st.markdown("---")
-        user_email = st.text_input("Your Email (for the report)", placeholder="you@example.com")
+            st.markdown("---")
+            user_email = st.text_input("Your Email (for the report)", placeholder="you@example.com")
 
-        c_submit, c_spacer = st.columns([1, 2])
-        with c_submit:
-            submitted = st.button(
-                f"Analyze {len(stocks_input)} Stock{'s' if len(stocks_input) != 1 else ''}",
+            submitted = st.form_submit_button(
+                "Analyze My Portfolio",
                 use_container_width=True, type="primary",
-                disabled=len(stocks_input) == 0,
             )
 
-        if submitted and stocks_input:
-            st.session_state.user_portfolio = stocks_input
-            st.session_state.user_email = user_email
-            st.session_state.portfolio_submitted = True
-            st.rerun()
+        if submitted:
+            stocks_input = []
+            for ticker, shares, avg_cost in form_tickers:
+                tk = ticker.upper().strip()
+                if tk and shares > 0 and avg_cost > 0:
+                    stocks_input.append({"ticker": tk, "shares": shares, "avg_cost": avg_cost})
+            if stocks_input:
+                st.session_state.user_portfolio = stocks_input
+                st.session_state.user_email = user_email
+                st.session_state.portfolio_submitted = True
+                st.rerun()
+            else:
+                st.error("Please enter at least one stock with shares and avg cost filled in.")
 
     with col_preview:
         st.markdown(
