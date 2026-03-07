@@ -26,9 +26,10 @@ import yfinance as yf
 import feedparser
 from dotenv import load_dotenv
 
-from ta.momentum import RSIIndicator
+from ta.momentum import RSIIndicator, StochRSIIndicator
 from ta.trend import MACD as MACDCalc, EMAIndicator
 from ta.volatility import BollingerBands, AverageTrueRange
+from ta.volume import OnBalanceVolumeIndicator
 
 # Optional imports -- degrade gracefully
 try:
@@ -57,6 +58,7 @@ EMAIL_PASSWORD  = os.getenv("EMAIL_PASSWORD")
 SENDER_EMAIL    = os.getenv("SENDER_EMAIL")
 RECIPIENT_EMAIL = os.getenv("RECIPIENT_EMAIL")
 FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
 SCHEDULE_TIME      = "07:30"
 ACCOUNT_SIZE       = 10_000
@@ -152,6 +154,24 @@ MACRO_KEYWORDS = {
     "earnings miss":{"tickers": ["*"],    "level": "MEDIUM", "reason": "Earnings concern"},
 }
 
+SECTOR_ETF_MAP = {
+    "OKLO": "NLR",
+    "EWY": "EEM",
+    "SCHD": "DVY",
+    "VOO": "SPY",
+    "Technology": "XLK",
+    "Healthcare": "XLV",
+    "Financials": "XLF",
+    "Energy": "XLE",
+    "Utilities": "XLU",
+    "Consumer Cyclical": "XLY",
+    "Consumer Defensive": "XLP",
+    "Industrials": "XLI",
+    "Basic Materials": "XLB",
+    "Real Estate": "XLRE",
+    "Communication Services": "XLC",
+}
+
 # =====================================================================
 #  2. CACHING & HELPERS
 # =====================================================================
@@ -202,11 +222,14 @@ def _similar(a: str, b: str, thresh: float = 0.80) -> bool:
 #  3. TECHNICAL INDICATORS
 # =====================================================================
 def compute_technicals(ticker: str) -> dict:
-    """Compute RSI, MACD, BB, EMA, ATR, Volume labels from 30-day daily data."""
-    empty = {"rsi": None, "rsi_label": "N/A", "macd_label": "NEUTRAL",
-             "bb_label": "N/A", "ema_label": "N/A", "vol_label": "N/A",
-             "atr": None, "atr_stop": None, "atr_target": None}
-    df = get_hist(ticker, "60d", "1d")
+    """Compute RSI, StochRSI, MACD, BB, EMA, ATR, VWAP, OBV, Support/Resistance."""
+    empty = {"rsi": None, "rsi_label": "N/A", "stoch_rsi": None, "stoch_rsi_label": "N/A",
+             "macd_label": "NEUTRAL", "bb_label": "N/A", "ema_label": "N/A",
+             "vol_label": "N/A", "atr": None, "atr_stop": None, "atr_target": None,
+             "vwap": None, "vwap_label": "N/A",
+             "obv_trend": "N/A",
+             "support": None, "resistance": None, "sr_label": "N/A"}
+    df = get_hist(ticker, "90d", "1d")
     if df.empty or len(df) < 26:
         return empty
     close = df["Close"]
@@ -217,6 +240,17 @@ def compute_technicals(ticker: str) -> dict:
         if rsi_val > 70: rsi_lbl = "OVERBOUGHT"
         elif rsi_val < 30: rsi_lbl = "OVERSOLD"
         else: rsi_lbl = "NEUTRAL"
+
+        # Stochastic RSI
+        stoch_rsi_val = None; stoch_rsi_lbl = "N/A"
+        try:
+            srsi = StochRSIIndicator(close=close, window=14, smooth1=3, smooth2=3)
+            stoch_rsi_val = round(srsi.stochrsi().iloc[-1], 3)
+            if stoch_rsi_val < 0.2: stoch_rsi_lbl = "OVERSOLD"
+            elif stoch_rsi_val > 0.8: stoch_rsi_lbl = "OVERBOUGHT"
+            else: stoch_rsi_lbl = "NEUTRAL"
+        except Exception:
+            pass
 
         # MACD
         macd_obj = MACDCalc(close=close, window_slow=26, window_fast=12, window_sign=9)
@@ -255,11 +289,76 @@ def compute_technicals(ticker: str) -> dict:
         vol_20 = df["Volume"].tail(20).mean()
         vol_today = df["Volume"].iloc[-1]
         vol_lbl = "HIGH VOLUME" if vol_today > 1.5 * vol_20 else "NORMAL"
+        day_up = close.iloc[-1] >= close.iloc[-2] if len(close) >= 2 else True
+
+        # VWAP (last 20 trading days)
+        vwap_val = None; vwap_lbl = "N/A"
+        try:
+            df_vwap = df.tail(20).copy()
+            tp = (df_vwap["High"] + df_vwap["Low"] + df_vwap["Close"]) / 3
+            cum_tp_vol = (tp * df_vwap["Volume"]).cumsum()
+            cum_vol = df_vwap["Volume"].cumsum()
+            vwap_series = cum_tp_vol / cum_vol
+            vwap_val = round(vwap_series.iloc[-1], 2)
+            vwap_lbl = "ABOVE VWAP" if cur > vwap_val else "BELOW VWAP"
+        except Exception:
+            pass
+
+        # OBV trend (10-day slope)
+        obv_trend = "N/A"
+        try:
+            obv = OnBalanceVolumeIndicator(close=close, volume=df["Volume"]).on_balance_volume()
+            obv_10 = obv.tail(10)
+            if len(obv_10) >= 10:
+                slope = obv_10.iloc[-1] - obv_10.iloc[0]
+                obv_trend = "ACCUMULATION" if slope > 0 else "DISTRIBUTION"
+        except Exception:
+            pass
+
+        # Support / Resistance (scan pivots in last 90 days, 1% tolerance, min 3 touches)
+        support = None; resistance = None; sr_lbl = "N/A"
+        try:
+            highs = df["High"].values
+            lows = df["Low"].values
+            levels: list[float] = []
+            for i in range(2, len(df) - 2):
+                if lows[i] < lows[i-1] and lows[i] < lows[i-2] and lows[i] < lows[i+1] and lows[i] < lows[i+2]:
+                    levels.append(lows[i])
+                if highs[i] > highs[i-1] and highs[i] > highs[i-2] and highs[i] > highs[i+1] and highs[i] > highs[i+2]:
+                    levels.append(highs[i])
+            sr_levels: list[tuple[float, int]] = []
+            used = set()
+            for lv in sorted(levels):
+                if any(abs(lv - u) / u < 0.01 for u in used):
+                    continue
+                touches = sum(1 for x in levels if abs(x - lv) / lv < 0.01)
+                if touches >= 3:
+                    sr_levels.append((lv, touches))
+                    used.add(lv)
+            supports = [lv for lv, _ in sr_levels if lv < cur]
+            resistances = [lv for lv, _ in sr_levels if lv > cur]
+            if supports:
+                support = round(max(supports), 2)
+            if resistances:
+                resistance = round(min(resistances), 2)
+            if support and abs(cur - support) / cur < 0.02:
+                sr_lbl = "NEAR SUPPORT"
+            elif resistance and abs(resistance - cur) / cur < 0.02:
+                sr_lbl = "NEAR RESISTANCE"
+            else:
+                sr_lbl = "MID RANGE"
+        except Exception:
+            pass
 
         return {"rsi": round(rsi_val, 1), "rsi_label": rsi_lbl,
+                "stoch_rsi": stoch_rsi_val, "stoch_rsi_label": stoch_rsi_lbl,
                 "macd_label": macd_lbl, "bb_label": bb_lbl,
                 "ema_label": ema_lbl, "vol_label": vol_lbl,
-                "atr": round(atr_val, 2), "atr_stop": atr_stop, "atr_target": atr_tgt}
+                "vol_up_day": day_up,
+                "atr": round(atr_val, 2), "atr_stop": atr_stop, "atr_target": atr_tgt,
+                "vwap": vwap_val, "vwap_label": vwap_lbl,
+                "obv_trend": obv_trend,
+                "support": support, "resistance": resistance, "sr_label": sr_lbl}
     except Exception:
         return empty
 
@@ -295,11 +394,68 @@ def get_financials(ticker: str) -> dict:
         except Exception:
             pass
 
+    # PEG Ratio
+    peg = None
+    try:
+        if fwd_pe and eg and eg > 0:
+            eg_pct = eg * 100 if eg < 1 else eg
+            peg = round(fwd_pe / eg_pct, 2) if eg_pct > 0 else None
+    except Exception:
+        pass
+    peg_label = "N/A"
+    if peg is not None:
+        if peg < 1: peg_label = "UNDERVALUED"
+        elif peg <= 2: peg_label = "FAIR"
+        else: peg_label = "EXPENSIVE"
+
+    # Altman Z-Score
+    z_score = None; z_label = "N/A"
+    try:
+        tkr = yf.Ticker(ticker)
+        bs = tkr.balance_sheet
+        inc = tkr.income_stmt
+        if bs is not None and not bs.empty and inc is not None and not inc.empty:
+            ta_val = bs.loc["Total Assets"].iloc[0] if "Total Assets" in bs.index else None
+            if ta_val and ta_val > 0:
+                wc = (bs.loc["Current Assets"].iloc[0] - bs.loc["Current Liabilities"].iloc[0]) if "Current Assets" in bs.index and "Current Liabilities" in bs.index else 0
+                re = bs.loc["Retained Earnings"].iloc[0] if "Retained Earnings" in bs.index else 0
+                ebit = inc.loc["EBIT"].iloc[0] if "EBIT" in inc.index else (inc.loc["Operating Income"].iloc[0] if "Operating Income" in inc.index else 0)
+                tl = bs.loc["Total Liabilities Net Minority Interest"].iloc[0] if "Total Liabilities Net Minority Interest" in bs.index else (ta_val - (bs.loc["Total Equity Gross Minority Interest"].iloc[0] if "Total Equity Gross Minority Interest" in bs.index else 0))
+                rev = inc.loc["Total Revenue"].iloc[0] if "Total Revenue" in inc.index else 0
+                mcap_val = info.get("marketCap") or 0
+                x4_denom = tl if tl and tl > 0 else 1
+                z_score = round(1.2 * (wc / ta_val) + 1.4 * (re / ta_val) + 3.3 * (ebit / ta_val) + 0.6 * (mcap_val / x4_denom) + 1.0 * (rev / ta_val), 2)
+                if z_score > 2.99: z_label = "SAFE"
+                elif z_score >= 1.81: z_label = "GREY ZONE"
+                else: z_label = "DISTRESS"
+    except Exception:
+        pass
+
+    # Earnings Estimate Revisions (Finnhub)
+    est_revision = "N/A"
+    try:
+        est_data = fh_call("company_eps_estimates", ticker, freq="quarterly")
+        if est_data and isinstance(est_data, dict):
+            estimates = est_data.get("data", [])
+            if len(estimates) >= 2:
+                current_est = estimates[0].get("epsAvg")
+                prev_est = estimates[1].get("epsAvg")
+                if current_est is not None and prev_est is not None and prev_est != 0:
+                    rev_pct = (current_est - prev_est) / abs(prev_est) * 100
+                    if rev_pct > 5: est_revision = "ESTIMATES RISING"
+                    elif rev_pct < -5: est_revision = "ESTIMATES FALLING"
+                    else: est_revision = "STABLE"
+    except Exception:
+        pass
+
     return {"fwd_pe": fwd_pe, "trail_pe": trail_pe, "pb": pb, "ps": ps,
             "eps": eps, "earnings_growth": eg, "revenue_growth": rg,
             "profit_margins": pm, "debt_to_equity": dte, "fcf": fcf,
             "beta": beta, "div_yield": div_y, "short_float": short_pct,
-            "inst_pct": inst_pct, "sector": sector}
+            "inst_pct": inst_pct, "sector": sector,
+            "peg": peg, "peg_label": peg_label,
+            "z_score": z_score, "z_label": z_label,
+            "est_revision": est_revision}
 
 
 # =====================================================================
@@ -413,6 +569,37 @@ def get_analyst_data(ticker: str) -> dict:
 
 
 # =====================================================================
+#  6b. SECTOR RELATIVE STRENGTH
+# =====================================================================
+def get_relative_strength(ticker: str, period_days: int = 20) -> dict:
+    """Compare ticker's return vs its sector ETF over the given period."""
+    default = {"ticker_return": 0, "sector_return": 0,
+               "relative_strength": 0, "outperforming": False}
+    try:
+        sector_etf = SECTOR_ETF_MAP.get(ticker)
+        if not sector_etf:
+            info = get_info(ticker)
+            sector = info.get("sector", "")
+            sector_etf = SECTOR_ETF_MAP.get(sector, "SPY")
+
+        period_str = f"{period_days + 5}d"
+        tk_hist = get_hist(ticker, period_str, "1d")
+        se_hist = get_hist(sector_etf, period_str, "1d")
+
+        if tk_hist.empty or se_hist.empty or len(tk_hist) < 2 or len(se_hist) < 2:
+            return default
+
+        tk_ret = (tk_hist["Close"].iloc[-1] / tk_hist["Close"].iloc[-min(period_days, len(tk_hist))] - 1) * 100
+        se_ret = (se_hist["Close"].iloc[-1] / se_hist["Close"].iloc[-min(period_days, len(se_hist))] - 1) * 100
+        rs = tk_ret - se_ret
+
+        return {"ticker_return": round(tk_ret, 2), "sector_return": round(se_ret, 2),
+                "relative_strength": round(rs, 2), "outperforming": rs > 0}
+    except Exception:
+        return default
+
+
+# =====================================================================
 #  7. NEWS  (yfinance + Finnhub + Google RSS, deduplicated)
 # =====================================================================
 def _google_news(query: str, n: int = 3) -> list[dict]:
@@ -429,8 +616,41 @@ def _google_news(query: str, n: int = 3) -> list[dict]:
         return []
 
 
-def get_ticker_news(ticker: str) -> list[dict]:
-    """3 deduplicated headlines from yfinance, Finnhub, Google News."""
+def score_news_sentiment(ticker: str, headlines: list[str]) -> float:
+    """Use Claude API to score news sentiment. Returns -1.0 to +1.0, 0.0 on failure."""
+    if not ANTHROPIC_API_KEY or not headlines:
+        return 0.0
+    try:
+        bullet_list = "\n".join(f"- {h}" for h in headlines if h)
+        prompt = (f"You are a financial analyst. Rate the overall sentiment of these news "
+                  f"headlines for {ticker} as a single float between -1.0 (very bearish) and "
+                  f"+1.0 (very bullish). Return ONLY the number, no explanation.\n"
+                  f"Headlines:\n{bullet_list}")
+        resp = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": ANTHROPIC_API_KEY,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+            },
+            json={
+                "model": "claude-haiku-4-5-20251001",
+                "max_tokens": 10,
+                "messages": [{"role": "user", "content": prompt}],
+            },
+            timeout=15,
+        )
+        if resp.status_code == 200:
+            text = resp.json()["content"][0]["text"].strip()
+            val = float(text)
+            return max(-1.0, min(1.0, val))
+    except Exception:
+        pass
+    return 0.0
+
+
+def get_ticker_news(ticker: str) -> dict:
+    """3 deduplicated headlines from yfinance, Finnhub, Google News + sentiment score."""
     all_items: list[dict] = []
     seen_titles: list[str] = []
 
@@ -463,7 +683,9 @@ def get_ticker_news(ticker: str) -> list[dict]:
     for a in _google_news(ticker, 3):
         _add(a["title"], a["link"], a["publisher"])
 
-    return all_items[:3]
+    items = all_items[:3]
+    sentiment = score_news_sentiment(ticker, [i["title"] for i in items])
+    return {"headlines": items, "sentiment_score": round(sentiment, 2)}
 
 
 def get_macro_news() -> dict:
@@ -617,6 +839,119 @@ def signal_logic(tk: str, price: float, pnl: float, pe: float | None,
 
 
 # =====================================================================
+#  9b. COMPOSITE SIGNAL SCORING
+# =====================================================================
+def compute_signal_score(ticker: str, technicals: dict, financials: dict,
+                         analyst_data: dict, news: dict,
+                         price: float = 0, pnl: float = 0,
+                         day_chg: float = 0, hi52: float | None = None) -> dict:
+    """Compute a composite score from -10 to +10 with per-component breakdown."""
+    breakdown: dict[str, float] = {}
+    parts: list[str] = []
+
+    # --- Technical components ---
+    rsi = technicals.get("rsi")
+    if rsi is not None:
+        if rsi < 30: s = 2.0
+        elif rsi < 45: s = 1.0
+        elif rsi <= 55: s = 0.0
+        elif rsi <= 70: s = -0.5
+        else: s = -2.0
+        breakdown["rsi"] = s
+        if s != 0: parts.append(f"RSI {rsi:.0f} ({'oversold' if s > 0 else 'overbought'})")
+    else:
+        breakdown["rsi"] = 0.0
+
+    macd_lbl = technicals.get("macd_label", "NEUTRAL")
+    if "BULLISH" in macd_lbl: breakdown["macd"] = 2.0; parts.append("MACD bullish crossover")
+    elif "BEARISH" in macd_lbl: breakdown["macd"] = -2.0; parts.append("MACD bearish crossover")
+    else: breakdown["macd"] = 0.0
+
+    bb_lbl = technicals.get("bb_label", "N/A")
+    if bb_lbl == "NEAR LOWER": breakdown["bollinger"] = 1.0; parts.append("Near lower Bollinger band")
+    elif bb_lbl == "NEAR UPPER": breakdown["bollinger"] = -1.0; parts.append("Near upper Bollinger band")
+    else: breakdown["bollinger"] = 0.0
+
+    ema_lbl = technicals.get("ema_label", "N/A")
+    if ema_lbl == "GOLDEN CROSS": breakdown["ema_cross"] = 1.5; parts.append("EMA golden cross")
+    elif ema_lbl == "DEATH CROSS": breakdown["ema_cross"] = -1.5; parts.append("EMA death cross")
+    else: breakdown["ema_cross"] = 0.0
+
+    vol_lbl = technicals.get("vol_label", "NORMAL")
+    vol_up = technicals.get("vol_up_day", True)
+    if vol_lbl == "HIGH VOLUME":
+        breakdown["volume"] = 0.5 if vol_up else -0.5
+        parts.append(f"High volume {'up' if vol_up else 'down'} day")
+    else:
+        breakdown["volume"] = 0.0
+
+    # --- Fundamental components ---
+    pe = financials.get("trail_pe") or financials.get("fwd_pe")
+    if pe is not None:
+        if pe < 15: breakdown["pe_ratio"] = 1.0; parts.append(f"Deep value PE {pe:.1f}")
+        elif pe <= 25: breakdown["pe_ratio"] = 0.0
+        elif pe <= 40: breakdown["pe_ratio"] = -0.5
+        else: breakdown["pe_ratio"] = -1.0; parts.append(f"High PE {pe:.1f}")
+    else:
+        breakdown["pe_ratio"] = 0.0
+
+    # --- Analyst consensus ---
+    buys = analyst_data.get("rec_buy", 0)
+    sells = analyst_data.get("rec_sell", 0)
+    if buys > sells * 2: breakdown["analyst_consensus"] = 1.0; parts.append("Strong analyst buy consensus")
+    elif sells > buys: breakdown["analyst_consensus"] = -1.0; parts.append("Analyst consensus bearish")
+    else: breakdown["analyst_consensus"] = 0.0
+
+    # --- Insider activity ---
+    ins_buys = analyst_data.get("insider_buys", 0)
+    ins_sells = analyst_data.get("insider_sells", 0)
+    if ins_buys > ins_sells: breakdown["insider_activity"] = 0.5; parts.append("Net insider buying")
+    elif ins_sells > ins_buys: breakdown["insider_activity"] = -0.5; parts.append("Net insider selling")
+    else: breakdown["insider_activity"] = 0.0
+
+    # --- News sentiment ---
+    sent = 0.0
+    if isinstance(news, dict):
+        sent = news.get("sentiment_score", 0.0)
+    breakdown["news_sentiment"] = round(max(-1.0, min(1.0, sent)), 2)
+    if abs(sent) > 0.3:
+        parts.append(f"News sentiment {'bullish' if sent > 0 else 'bearish'} ({sent:+.2f})")
+
+    # --- Total score ---
+    raw_score = sum(breakdown.values())
+    score = round(max(-10.0, min(10.0, raw_score)), 1)
+
+    # --- Map to signal ---
+    if score > 3: signal = "BUY"
+    elif score > 1: signal = "TRIM"
+    elif score >= -1: signal = "HOLD"
+    elif score >= -3: signal = "WATCH"
+    else: signal = "SELL"
+
+    reasoning = ". ".join(parts) + "." if parts else "No strong signals detected."
+
+    # --- Per-ticker hard caps (override score-based signal) ---
+    override_reason = None
+    if ticker == "OKLO":
+        if price >= 85: signal = "SELL"; override_reason = "Price exceeded $85 target -- take profit"
+        elif pnl > 30: signal = "TRIM"; override_reason = f"Up {pnl:+.1f}% -- take profit before Q1 volatility"
+        elif pnl < -20: signal = "WATCH"; override_reason = f"Down {pnl:+.1f}% -- pre-revenue risk"
+        elif day_chg < -5: signal = "SELL"; override_reason = f"Sharp {day_chg:+.1f}% drop -- protect capital"
+    elif ticker in ("VOO", "SCHD"):
+        if ticker == "VOO" and price < 615: signal = "BUY"; override_reason = "Below $615 threshold -- accumulate"
+        elif day_chg < -3: signal = "BUY"; override_reason = f"Down {day_chg:+.1f}% -- discount, accumulate"
+    elif ticker == "EWY":
+        dfh = (hi52 - price) / hi52 if hi52 and hi52 > 0 else None
+        if dfh is not None and dfh < 0.02: signal = "TRIM"; override_reason = "Near 52W high -- upside capped, take 25% profit"
+        elif pnl > 25: signal = "TRIM"; override_reason = f"Up {pnl:+.1f}% -- lock in international gains"
+
+    if override_reason:
+        reasoning = override_reason
+
+    return {"score": score, "signal": signal, "breakdown": breakdown, "reasoning": reasoning}
+
+
+# =====================================================================
 #  10. PORTFOLIO ANALYSIS
 # =====================================================================
 def _timeline_block(tk: str, price: float, tech: dict, earnings: dict) -> dict:
@@ -706,12 +1041,19 @@ def analyse_portfolio(portfolio: list[dict]) -> list[dict]:
         elif mcap_r and mcap_r >= 1e6: mcap = f"${mcap_r/1e6:.1f}M"
         else: mcap = "N/A"
 
-        sig, reason = signal_logic(tk, cur, opnl_p, pe, dpnl_p, hi52)
         tech = compute_technicals(tk)
         fins = get_financials(tk)
         earn = get_earnings_info(tk)
         anly = get_analyst_data(tk)
         news = get_ticker_news(tk)
+        rel_str = get_relative_strength(tk)
+
+        scoring = compute_signal_score(
+            tk, tech, fins, anly, news,
+            price=cur, pnl=opnl_p, day_chg=dpnl_p, hi52=hi52)
+        sig = scoring["signal"]
+        reason = scoring["reasoning"]
+
         timeline = _timeline_block(tk, cur, tech, earn)
         action = _action_text(sig, {"shares": shares, "current_price": cur})
 
@@ -726,11 +1068,13 @@ def analyse_portfolio(portfolio: list[dict]) -> list[dict]:
             "lo52": round(lo52, 2) if lo52 else None,
             "range_pct": round(rng, 1) if rng is not None else None,
             "signal": sig, "reason": reason, "action": action,
+            "score": scoring["score"], "score_breakdown": scoring["breakdown"],
             "strategy": PORTFOLIO_STRATEGIES.get(tk, ""),
             "tech": tech, "fins": fins, "earn": earn, "analyst": anly,
             "news": news, "timeline": timeline,
+            "relative_strength": rel_str,
         })
-        print(f"  [PORT] {tk:6s}  ${cur:>8.2f}  P&L {opnl_p:+.2f}%  -> {sig}")
+        print(f"  [PORT] {tk:6s}  ${cur:>8.2f}  P&L {opnl_p:+.2f}%  -> {sig} (score {scoring['score']:+.1f})")
     return results
 
 
@@ -751,6 +1095,8 @@ def enrich_picks(picks: list[dict]) -> list[dict]:
         anly = get_analyst_data(tk)
         news = get_ticker_news(tk)
         fins = get_financials(tk)
+
+        scoring = compute_signal_score(tk, tech, fins, anly, news, price=cur, day_chg=day_chg)
 
         # Strategy detection (prefer label from config, auto-detect if MANUAL)
         strat = p.get("strategy_type", "MANUAL")
@@ -781,8 +1127,9 @@ def enrich_picks(picks: list[dict]) -> list[dict]:
             "risk_pct": round(risk_pct, 2), "reward_pct": round(reward_pct, 2),
             "rr": round(rr, 1), "pos_size": pos_size, "fill_window": fill,
             "tech": tech, "earn": earn, "analyst": anly, "news": news, "fins": fins,
+            "score": scoring["score"], "score_breakdown": scoring["breakdown"],
         })
-        print(f"  [PICK] {tk:6s}  ${cur:>8.2f}  Day {day_chg:+.2f}%  -> {status}  [{strat}]")
+        print(f"  [PICK] {tk:6s}  ${cur:>8.2f}  Day {day_chg:+.2f}%  -> {status}  [{strat}] (score {scoring['score']:+.1f})")
     return out
 
 
@@ -938,6 +1285,130 @@ def _risk_badge(level):
             f'color:{c};font-weight:700;font-size:10px;">{level}</span>')
 
 
+def _score_breakdown_html(h: dict) -> str:
+    """Compact score breakdown table for email cards."""
+    bd = h.get("score_breakdown", {})
+    sc = h.get("score", 0)
+    if not bd:
+        return ""
+    sc_c = C_GREEN if sc > 1 else C_RED if sc < -1 else C_AMBER
+    rows = ""
+    for comp, val in bd.items():
+        if val == 0:
+            continue
+        vc = C_GREEN if val > 0 else C_RED
+        label = comp.replace("_", " ").title()
+        rows += (f'<tr><td style="padding:2px 6px;color:{C_TEXT};font-size:10px;'
+                 f'border-bottom:1px solid {C_BORDER};">{label}</td>'
+                 f'<td style="padding:2px 6px;color:{vc};font-size:10px;font-weight:700;'
+                 f'text-align:right;border-bottom:1px solid {C_BORDER};">{val:+.1f}</td></tr>')
+    if not rows:
+        return ""
+    return (f'<div style="margin-top:8px;padding:8px 10px;background:{C_ALT};border-radius:5px;">'
+            f'<div style="font-size:9px;color:{C_DIM};text-transform:uppercase;margin-bottom:4px;">'
+            f'Score: <span style="color:{sc_c};font-weight:700;">{sc:+.1f}</span></div>'
+            f'<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">'
+            f'{rows}</table></div>')
+
+
+def _relative_strength_html(h: dict) -> str:
+    """Relative strength vs sector for email cards."""
+    rs = h.get("relative_strength", {})
+    if not rs or not isinstance(rs, dict):
+        return ""
+    val = rs.get("relative_strength", 0)
+    out = rs.get("outperforming", False)
+    c = C_GREEN if out else C_RED
+    arrow = "+" if out else ""
+    return (f'<div style="margin-top:4px;font-size:10px;color:{c};font-weight:600;">'
+            f'vs Sector: {arrow}{val:.1f}% {"📈" if out else "📉"}</div>')
+
+
+def get_premarket_movers(portfolio: list[dict], watchlist: list[str]) -> list[dict]:
+    """Fetch pre-market price changes for portfolio + watchlist tickers."""
+    movers = []
+    try:
+        all_tks = set(watchlist)
+        for p in portfolio:
+            all_tks.add(p["ticker"])
+        for tk in sorted(all_tks):
+            info = get_info(tk)
+            pre = info.get("preMarketPrice")
+            prev = info.get("previousClose") or info.get("regularMarketPreviousClose")
+            if pre and prev and prev > 0:
+                chg = (pre - prev) / prev * 100
+                if abs(chg) > 2:
+                    movers.append({"ticker": tk, "pre_price": round(pre, 2),
+                                   "prev_close": round(prev, 2), "change_pct": round(chg, 2)})
+    except Exception:
+        pass
+    return sorted(movers, key=lambda x: abs(x["change_pct"]), reverse=True)
+
+
+def html_premarket(movers: list[dict]) -> str:
+    """Pre-market movers section for email."""
+    if not movers:
+        return ""
+    rows = ""
+    for m in movers:
+        c = C_GREEN if m["change_pct"] > 0 else C_RED
+        rows += (f'<tr><td style="padding:6px 10px;color:{C_WHITE};font-weight:700;font-size:12px;'
+                 f'border-bottom:1px solid {C_BORDER};">{m["ticker"]}</td>'
+                 f'<td style="padding:6px 10px;color:{C_TEXT};font-size:12px;'
+                 f'border-bottom:1px solid {C_BORDER};">{_dlr(m["prev_close"])}</td>'
+                 f'<td style="padding:6px 10px;color:{c};font-weight:700;font-size:12px;'
+                 f'border-bottom:1px solid {C_BORDER};">{_dlr(m["pre_price"])}</td>'
+                 f'<td style="padding:6px 10px;border-bottom:1px solid {C_BORDER};">'
+                 f'{_pct_val(m["change_pct"])}</td></tr>')
+    table = (f'<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">'
+             f'<thead><tr style="background:{C_CARD};">{_th("Ticker")}{_th("Prev Close")}'
+             f'{_th("Pre-Market")}{_th("Change")}</tr></thead><tbody>{rows}</tbody></table>')
+    return _sec("Pre-Market Movers (>2%)", table)
+
+
+def html_friday_recap(holdings: list[dict]) -> str:
+    """Weekly recap section for Friday emails."""
+    if datetime.date.today().weekday() != 4:
+        return ""
+    rows = ""
+    spy_hist = get_hist("SPY", "10d", "1d")
+    spy_7d = 0
+    if not spy_hist.empty and len(spy_hist) >= 5:
+        spy_7d = (spy_hist["Close"].iloc[-1] / spy_hist["Close"].iloc[0] - 1) * 100
+
+    best_tk, best_ret = "", -999
+    worst_tk, worst_ret = "", 999
+
+    for h in holdings:
+        tk = h["ticker"]
+        hist = get_hist(tk, "10d", "1d")
+        if hist.empty or len(hist) < 2:
+            continue
+        ret = (hist["Close"].iloc[-1] / hist["Close"].iloc[0] - 1) * 100
+        c = C_GREEN if ret > 0 else C_RED
+        vs_spy = ret - spy_7d
+        vs_c = C_GREEN if vs_spy > 0 else C_RED
+        rows += (f'<tr><td style="padding:6px 10px;color:{C_WHITE};font-weight:700;'
+                 f'border-bottom:1px solid {C_BORDER};">{tk}</td>'
+                 f'<td style="padding:6px 10px;color:{c};font-weight:700;'
+                 f'border-bottom:1px solid {C_BORDER};">{ret:+.2f}%</td>'
+                 f'<td style="padding:6px 10px;color:{vs_c};font-weight:700;'
+                 f'border-bottom:1px solid {C_BORDER};">{vs_spy:+.2f}%</td></tr>')
+        if ret > best_ret: best_ret, best_tk = ret, tk
+        if ret < worst_ret: worst_ret, worst_tk = ret, tk
+
+    if not rows:
+        return ""
+    summary = (f'<div style="margin-bottom:10px;font-size:11px;color:{C_TEXT};line-height:1.6;">'
+               f'SPY 7-Day: <span style="color:{C_GREEN if spy_7d > 0 else C_RED};font-weight:700;">{spy_7d:+.2f}%</span>'
+               f' | Best: <span style="color:{C_GREEN};font-weight:700;">{best_tk} ({best_ret:+.2f}%)</span>'
+               f' | Worst: <span style="color:{C_RED};font-weight:700;">{worst_tk} ({worst_ret:+.2f}%)</span></div>')
+    table = (f'<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">'
+             f'<thead><tr style="background:{C_CARD};">{_th("Ticker")}{_th("7-Day Return")}'
+             f'{_th("vs SPY")}</tr></thead><tbody>{rows}</tbody></table>')
+    return _sec("Weekly Recap", summary + table)
+
+
 def html_header(sp, today_str, now_str):
     mood_c = C_GREEN if sp["spy_mood"]=="Bullish" else C_RED if sp["spy_mood"]=="Bearish" else C_AMBER
     return f"""
@@ -1020,8 +1491,13 @@ def html_portfolio(holdings):
         if a["target_mean"]:
             tgt_s = f'Target: ${a["target_low"]:.0f} / ${a["target_mean"]:.0f} / ${a["target_high"]:.0f}'
         insider_s = f'Insider: {a["insider_buys"]} buys / {a["insider_sells"]} sells (30d)'
-        news_h = ""
-        for n in h["news"][:3]:
+        news_data = h.get("news", {})
+        news_items = news_data.get("headlines", []) if isinstance(news_data, dict) else news_data
+        sent_score = news_data.get("sentiment_score", 0) if isinstance(news_data, dict) else 0
+        sent_c = C_GREEN if sent_score > 0.3 else C_RED if sent_score < -0.3 else C_DIM
+        sent_lbl = "Bullish" if sent_score > 0.3 else "Bearish" if sent_score < -0.3 else "Neutral"
+        news_h = f'<div style="padding:3px 0;font-size:10px;"><span style="color:{sent_c};font-weight:700;">News Sentiment: {sent_lbl} ({sent_score:+.2f})</span></div>'
+        for n in news_items[:3]:
             lnk = f'<a href="{n["link"]}" style="color:{C_BLUE};text-decoration:none;">' if n["link"] else ""
             cl = "</a>" if n["link"] else ""
             news_h += f'<div style="padding:3px 0;font-size:10px;color:{C_TEXT};border-bottom:1px solid {C_BORDER};">{lnk}{n["title"]}{cl}</div>'
@@ -1045,6 +1521,8 @@ def html_portfolio(holdings):
           <div style="margin-top:8px;padding:8px 10px;background:{C_ALT};border-radius:5px;font-size:10px;color:{C_TEXT};line-height:1.6;">
             {earn_s}<br>Analyst: {analyst_s} {tgt_s}<br>{insider_s}
           </div>
+          {_score_breakdown_html(h)}
+          {_relative_strength_html(h)}
           <div style="margin-top:8px;padding:8px 10px;background:{C_ALT};border-radius:5px;font-size:10px;line-height:1.6;">
             <div style="color:{C_CYAN};font-weight:600;">Short-term (0-30d):</div><div style="color:{C_TEXT};">{tl["short_level"]}<br>{tl["short_trigger"]}</div>
             <div style="color:{C_CYAN};font-weight:600;margin-top:4px;">Medium-term (1-6mo):</div><div style="color:{C_TEXT};">{tl["med_catalyst"]}<br>{tl["med_target"]}</div>
@@ -1069,8 +1547,10 @@ def html_picks(picks, title):
         if p.get("earn", {}).get("days_to_earnings") is not None:
             d = p["earn"]["days_to_earnings"]
             earn_s = f'Earnings in {d}d' if d >= 0 else ""
+        p_news = p.get("news", {})
+        p_news_items = p_news.get("headlines", []) if isinstance(p_news, dict) else p_news
         news_h = ""
-        for n in p.get("news", [])[:2]:
+        for n in p_news_items[:2]:
             lnk = f'<a href="{n["link"]}" style="color:{C_BLUE};text-decoration:none;">' if n["link"] else ""
             cl = "</a>" if n["link"] else ""
             news_h += f'<div style="padding:2px 0;font-size:10px;color:{C_TEXT};">{lnk}{n["title"]}{cl}</div>'
@@ -1181,14 +1661,18 @@ def html_risk(rd):
 # =====================================================================
 #  15. EMAIL ASSEMBLY & SEND
 # =====================================================================
-def build_html(sp, macro, catalysts, portfolio, picks_m, picks_s, gainers, losers, risk_d):
+def build_html(sp, macro, catalysts, portfolio, picks_m, picks_s, gainers, losers, risk_d,
+               premarket_movers=None):
     today_s = datetime.date.today().strftime("%A, %B %d, %Y")
     now_s = datetime.datetime.now().strftime("%I:%M %p")
+    pre_html = html_premarket(premarket_movers or [])
+    friday_html = html_friday_recap(portfolio)
     return f"""<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background-color:{C_BG};font-family:'SF Pro Display','Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;">
 <div style="max-width:720px;margin:0 auto;padding:20px 10px;">
   {html_header(sp, today_s, now_s)}
   <div style="background:{C_CARD};border-radius:0 0 12px 12px;padding-bottom:8px;overflow:hidden;">
+    {pre_html}
     {html_macro(macro)}
     {html_catalysts(catalysts)}
     {html_portfolio(portfolio)}
@@ -1199,6 +1683,7 @@ def build_html(sp, macro, catalysts, portfolio, picks_m, picks_s, gainers, loser
     {html_risk(risk_d)}
     {html_movers(gainers, "Top 10 Gainers")}
     {html_movers(losers, "Top 10 Losers")}
+    {friday_html}
     <div style="margin:20px 20px 14px;padding:12px 16px;background:{C_ALT};border-radius:8px;border:1px solid {C_BORDER};text-align:center;">
       <div style="font-size:9px;color:{C_DIM};line-height:1.6;">
         Data: Yahoo Finance | Finnhub | Finviz | Google News<br>
@@ -1272,38 +1757,43 @@ def setup_scheduler():
 # =====================================================================
 def main():
     print("\n" + "=" * 55)
-    print("   AI STOCK ANALYST v3 -- Starting")
+    print("   AI STOCK ANALYST v4 -- Starting")
     print("=" * 55 + "\n")
 
     setup_scheduler(); print()
 
-    print("[1/6] Market summary...")
+    print("[1/7] Market summary...")
     sp = fetch_market_summary()
     print(f"  [OK] S&P 500: ${sp['price']:,.2f}  ({sp['change']:+.2f}%)  SPY: {sp['spy_mood']}")
 
-    print("[2/6] Macro news & catalysts...")
+    print("[2/7] Pre-market movers...")
+    premarket = get_premarket_movers(MY_PORTFOLIO, WATCHLIST)
+    print(f"  [OK] {len(premarket)} pre-market movers >2%")
+
+    print("[3/7] Macro news & catalysts...")
     macro = get_macro_news()
     catalysts = get_weekly_catalysts()
     print(f"  [OK] {len(macro['headlines'])} headlines, {len(macro['risks'])} risk flags, {len(catalysts)} catalysts")
 
-    print("[3/6] Portfolio analysis...")
+    print("[4/7] Portfolio analysis (composite scoring)...")
     portfolio = analyse_portfolio(MY_PORTFOLIO)
     risk_d = compute_risk_dashboard(portfolio)
     print(f"  [OK] Beta: {risk_d['weighted_beta']:.2f}  Risk: {risk_d['risk_rating']}  VaR: ${risk_d['var_95']:,.2f}")
 
-    print("[4/6] Enriching smart picks...")
+    print("[5/7] Enriching smart picks...")
     picks_m = enrich_picks(MOMENTUM_PICKS)
     picks_s = enrich_picks(SWING_PICKS)
 
-    print("[5/6] Scanning S&P 500...")
+    print("[6/7] Scanning S&P 500...")
     tickers = fetch_sp500_tickers()
     df = analyse_stocks(tickers)
     if df.empty:
         print("  [ERROR] No data."); return
     gainers, losers = get_top_movers(df)
 
-    print("[6/6] Building & sending report...")
-    html = build_html(sp, macro, catalysts, portfolio, picks_m, picks_s, gainers, losers, risk_d)
+    print("[7/7] Building & sending report...")
+    html = build_html(sp, macro, catalysts, portfolio, picks_m, picks_s, gainers, losers, risk_d,
+                      premarket_movers=premarket)
     text = build_plain(sp, portfolio, picks_m, picks_s)
     send_email(html, text)
 
