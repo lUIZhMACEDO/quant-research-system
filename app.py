@@ -27,7 +27,7 @@ from main import (
     get_earnings_info, get_analyst_data, get_ticker_news,
     _timeline_block, _action_text, get_info, get_hist,
     get_relative_strength,
-    MOMENTUM_PICKS, SWING_PICKS, STRATEGY_NAMES,
+    MOMENTUM_PICKS, SWING_PICKS, STRATEGY_NAMES, MY_PORTFOLIO,
     fetch_sp500_tickers, analyse_stocks, get_top_movers,
     _info_cache, _hist_cache,
 )
@@ -639,6 +639,8 @@ if "user_email" not in st.session_state:
     st.session_state.user_email = ""
 if "num_stocks" not in st.session_state:
     st.session_state.num_stocks = 1
+if "page_mode" not in st.session_state:
+    st.session_state.page_mode = "custom"
 
 
 # ═════════════════════════════════════════════════════════════════
@@ -657,7 +659,51 @@ with st.sidebar:
     )
     st.divider()
 
-    if st.session_state.portfolio_submitted:
+    # Page navigation
+    st.markdown(
+        f'<div style="font-size:10px;color:{DIM};font-weight:600;'
+        f'text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;font-family:monospace;">'
+        f'Navigation</div>',
+        unsafe_allow_html=True,
+    )
+    nav_col1, nav_col2 = st.columns(2)
+    with nav_col1:
+        if st.button("My Portfolio", use_container_width=True,
+                      type="primary" if st.session_state.page_mode == "personal" else "secondary"):
+            st.session_state.page_mode = "personal"
+            st.session_state.portfolio_submitted = False
+            st.rerun()
+    with nav_col2:
+        if st.button("Analyze Stocks", use_container_width=True,
+                      type="primary" if st.session_state.page_mode == "custom" else "secondary"):
+            st.session_state.page_mode = "custom"
+            st.session_state.portfolio_submitted = False
+            st.rerun()
+    st.divider()
+
+    if st.session_state.page_mode == "personal":
+        st.markdown(
+            f'<div style="font-size:11px;color:{DIM};font-weight:600;'
+            f'text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;font-family:monospace;">'
+            f'Tracked Stocks</div>',
+            unsafe_allow_html=True,
+        )
+        for p in MY_PORTFOLIO:
+            st.markdown(
+                f'<div style="padding:4px 0;font-size:13px;font-family:monospace;">'
+                f'<span style="color:{GREEN};font-weight:700;">{p["ticker"]}</span>'
+                f' <span style="color:{DIM};">-- {p["shares"]} @ {dlr(p["avg_cost"])}</span>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+        st.divider()
+        if st.button("Refresh Data", use_container_width=True, type="primary", key="refresh_personal"):
+            st.cache_data.clear()
+            _info_cache.clear()
+            _hist_cache.clear()
+            st.rerun()
+
+    elif st.session_state.portfolio_submitted:
         st.markdown(
             f'<div style="font-size:11px;color:{DIM};font-weight:600;'
             f'text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;font-family:monospace;">'
@@ -680,7 +726,7 @@ with st.sidebar:
             _info_cache.clear()
             _hist_cache.clear()
             st.rerun()
-        if st.button("Refresh Data", use_container_width=True, type="primary"):
+        if st.button("Refresh Data", use_container_width=True, type="primary", key="refresh_custom"):
             st.cache_data.clear()
             _info_cache.clear()
             _hist_cache.clear()
@@ -704,7 +750,7 @@ with st.sidebar:
 # ═════════════════════════════════════════════════════════════════
 #  PAGE 1: INPUT FORM  (shown before submission)
 # ═════════════════════════════════════════════════════════════════
-if not st.session_state.portfolio_submitted:
+if st.session_state.page_mode == "custom" and not st.session_state.portfolio_submitted:
     st.markdown(f"""
     <div style="text-align:center;margin:40px 0 20px;">
       <div class="hero-title">&gt; Get Your Free Stock Analysis<span class="cursor-blink"></span></div>
@@ -726,13 +772,17 @@ if not st.session_state.portfolio_submitted:
             unsafe_allow_html=True,
         )
 
+        num = st.number_input(
+            "How many stocks?", min_value=1, max_value=20,
+            value=st.session_state.num_stocks, key="num_input",
+        )
+        if int(num) != st.session_state.num_stocks:
+            st.session_state.num_stocks = int(num)
+            st.rerun()
+
         with st.form("portfolio_form"):
-            num = st.number_input(
-                "How many stocks?", min_value=1, max_value=20, value=st.session_state.num_stocks,
-                key="num_input",
-            )
             form_tickers = []
-            for i in range(int(num)):
+            for i in range(st.session_state.num_stocks):
                 st.markdown(
                     f'<div style="font-size:12px;color:{AMBER};font-weight:600;margin-top:10px;font-family:monospace;">'
                     f'Stock #{i+1}</div>',
@@ -753,7 +803,6 @@ if not st.session_state.portfolio_submitted:
             )
 
         if submitted:
-            st.session_state.num_stocks = int(num)
             stocks_input = []
             for ticker, shares, avg_cost in form_tickers:
                 tk = ticker.upper().strip()
@@ -794,11 +843,16 @@ if not st.session_state.portfolio_submitted:
 
 
 # ═════════════════════════════════════════════════════════════════
-#  PAGE 2: DASHBOARD  (shown after submission)
+#  PAGE 2: DASHBOARD  (shown after submission or personal mode)
 # ═════════════════════════════════════════════════════════════════
-if st.session_state.portfolio_submitted:
-    user_portfolio = st.session_state.user_portfolio
-    user_email = st.session_state.user_email
+show_dashboard = st.session_state.portfolio_submitted or st.session_state.page_mode == "personal"
+if show_dashboard:
+    if st.session_state.page_mode == "personal":
+        user_portfolio = MY_PORTFOLIO
+        user_email = ""
+    else:
+        user_portfolio = st.session_state.user_portfolio
+        user_email = st.session_state.user_email
 
     # ── Loading screen ──
     loading = st.empty()
@@ -853,7 +907,10 @@ if st.session_state.portfolio_submitted:
     sp = load_market()
     picks_m, picks_s = load_picks()
     macro, catalysts = load_news()
-    holdings = analyse_user_portfolio(user_portfolio)
+    if st.session_state.page_mode == "personal":
+        holdings = analyse_portfolio(user_portfolio)
+    else:
+        holdings = analyse_user_portfolio(user_portfolio)
     risk_d = compute_risk_dashboard(holdings)
 
     email_sent = False
