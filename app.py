@@ -1006,7 +1006,7 @@ if st.session_state.portfolio_submitted:
 
             with st.expander(f"View Chart - {h['ticker']}"):
                 fig = build_plotly_chart(h["ticker"], t)
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, use_container_width=True, key=f"chart_port_{h['ticker']}")
 
     # ──── TRADE IDEAS TAB ────
     with tab_picks:
@@ -1025,7 +1025,7 @@ if st.session_state.portfolio_submitted:
             selected_h = next((h for h in holdings if h["ticker"] == selected_tk), None)
             if selected_h:
                 fig = build_plotly_chart(selected_tk, selected_h["tech"])
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, use_container_width=True, key=f"chart_tech_{selected_tk}")
 
                 # Technical data table below chart
                 t = selected_h["tech"]
