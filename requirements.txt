@@ -10,3 +10,5 @@ finnhub-python
 beautifulsoup4
 numpy
 feedparser
+anthropic
+plotly

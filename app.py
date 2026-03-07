@@ -1,6 +1,6 @@
 """
-AI Stock Analyst  --  Public Streamlit Dashboard
-=================================================
+AI Stock Analyst  --  Public Streamlit Dashboard v4
+====================================================
 Anyone can enter their stocks, shares, avg cost, and email.
 The app generates a personalized dashboard and sends them a report.
 """
@@ -8,10 +8,12 @@ The app generates a personalized dashboard and sends them a report.
 import streamlit as st
 import os, datetime, smtplib
 import pandas as pd
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-for _key in ("EMAIL_PASSWORD", "SENDER_EMAIL", "RECIPIENT_EMAIL", "FINNHUB_API_KEY"):
+for _key in ("EMAIL_PASSWORD", "SENDER_EMAIL", "RECIPIENT_EMAIL", "FINNHUB_API_KEY", "ANTHROPIC_API_KEY"):
     if _key not in os.environ:
         try:
             os.environ[_key] = st.secrets[_key]
@@ -21,9 +23,10 @@ for _key in ("EMAIL_PASSWORD", "SENDER_EMAIL", "RECIPIENT_EMAIL", "FINNHUB_API_K
 from main import (
     fetch_market_summary, get_macro_news, get_weekly_catalysts,
     analyse_portfolio, enrich_picks, compute_risk_dashboard,
-    compute_technicals, get_financials, signal_logic,
+    compute_technicals, get_financials, compute_signal_score,
     get_earnings_info, get_analyst_data, get_ticker_news,
-    _timeline_block, _action_text, get_info,
+    _timeline_block, _action_text, get_info, get_hist,
+    get_relative_strength,
     MOMENTUM_PICKS, SWING_PICKS, STRATEGY_NAMES,
     fetch_sp500_tickers, analyse_stocks, get_top_movers,
     _info_cache, _hist_cache,
@@ -42,25 +45,29 @@ st.set_page_config(
 # ═════════════════════════════════════════════════════════════════
 #  PALETTE
 # ═════════════════════════════════════════════════════════════════
-BG     = "#0b0e11"
-CARD   = "#141821"
-ALT    = "#1a1f2b"
-BORDER = "#1e2533"
-TEXT   = "#d1d4dc"
+BG     = "#0A0E1A"
+CARD   = "#111827"
+ALT    = "#1a2332"
+BORDER = "#1e3a5f"
+TEXT   = "#E2E8F0"
 DIM    = "#6b7280"
-GREEN  = "#00d26a"
-RED    = "#f6465d"
-AMBER  = "#f0b90b"
+GREEN  = "#00FF88"
+RED    = "#FF4444"
+AMBER  = "#FFB800"
 BLUE   = "#3b82f6"
 WHITE  = "#ffffff"
 PURPLE = "#a78bfa"
 CYAN   = "#22d3ee"
 
 # ═════════════════════════════════════════════════════════════════
-#  CSS
+#  CSS — Finance Terminal Aesthetic
 # ═════════════════════════════════════════════════════════════════
 st.markdown(f"""
 <style>
+    #MainMenu {{visibility: hidden;}}
+    footer {{visibility: hidden;}}
+    header {{visibility: hidden;}}
+
     .stApp {{ background-color: {BG}; }}
     section[data-testid="stSidebar"] {{ background-color: {CARD}; }}
     .block-container {{ padding-top: 1rem; }}
@@ -71,11 +78,14 @@ st.markdown(f"""
     .stTabs [aria-selected="true"] {{
         background-color: {ALT} !important; color: {WHITE} !important;
     }}
-    [data-testid="stMetricValue"] {{ font-size: 1.3rem; font-weight: 800; }}
+    [data-testid="stMetricValue"] {{ font-size: 1.3rem; font-weight: 800; font-family: monospace; }}
     [data-testid="stMetricDelta"] {{ font-size: 0.85rem; }}
+
     .stock-card {{
-        background: {CARD}; border: 1px solid {BORDER};
-        border-radius: 10px; padding: 18px 22px; margin-bottom: 14px;
+        background: linear-gradient(135deg, {CARD} 0%, {ALT} 100%);
+        border: 1px solid {BORDER};
+        border-radius: 12px; padding: 20px; margin-bottom: 16px;
+        box-shadow: 0 4px 24px rgba(0, 255, 136, 0.05);
     }}
     .badge {{
         display: inline-block; padding: 3px 12px; border-radius: 4px;
@@ -83,17 +93,50 @@ st.markdown(f"""
     }}
     .badge-buy   {{ background: {GREEN}1a; color: {GREEN}; }}
     .badge-sell  {{ background: {RED}1a;   color: {RED}; }}
-    .badge-hold  {{ background: {DIM}22;   color: {TEXT}; }}
+    .badge-hold  {{ background: {AMBER}1a; color: {AMBER}; }}
     .badge-trim  {{ background: {AMBER}1a; color: {AMBER}; }}
-    .badge-watch {{ background: {AMBER}1a; color: {AMBER}; }}
-    .kpi-label {{ font-size: 9px; color: {DIM}; text-transform: uppercase; letter-spacing: 0.5px; }}
-    .kpi-value {{ font-size: 15px; font-weight: 700; }}
+    .badge-watch {{ background: {DIM}22;   color: {TEXT}; }}
+
+    .signal-buy  {{ color: {GREEN}; font-weight: bold; font-size: 1.1em; }}
+    .signal-sell {{ color: {RED}; font-weight: bold; font-size: 1.1em; }}
+    .signal-hold {{ color: {AMBER}; font-weight: bold; font-size: 1.1em; }}
+    .signal-watch {{ color: {DIM}; font-weight: bold; font-size: 1.1em; }}
+
+    .score-bar-container {{ background: {ALT}; border-radius: 8px; height: 8px; margin: 8px 0; position: relative; }}
+    .score-bar {{ height: 8px; border-radius: 8px; position: absolute; }}
+
+    .metric-tile {{
+        background: {CARD}; border: 1px solid {BORDER};
+        border-radius: 8px; padding: 12px 16px; text-align: center;
+    }}
+
+    .kpi-label {{ font-size: 9px; color: {DIM}; text-transform: uppercase; letter-spacing: 0.5px; font-family: monospace; }}
+    .kpi-value {{ font-size: 15px; font-weight: 700; font-family: monospace; }}
     .hero-title {{
-        font-size: 36px; font-weight: 900; color: {WHITE};
-        letter-spacing: -0.5px; line-height: 1.2;
+        font-size: 36px; font-weight: 900; color: {GREEN};
+        letter-spacing: -0.5px; line-height: 1.2; font-family: monospace;
     }}
     .hero-sub {{
         font-size: 16px; color: {DIM}; margin-top: 8px; line-height: 1.5;
+    }}
+
+    /* Terminal prompt effect for input page */
+    .terminal-prompt {{
+        font-family: 'Courier New', monospace;
+        color: {GREEN};
+        background: {BG};
+        padding: 16px;
+        border-radius: 8px;
+        border: 1px solid {BORDER};
+    }}
+    @keyframes blink {{ 50% {{ opacity: 0; }} }}
+    .cursor-blink {{
+        display: inline-block;
+        width: 8px; height: 18px;
+        background: {GREEN};
+        margin-left: 4px;
+        animation: blink 1s step-start infinite;
+        vertical-align: text-bottom;
     }}
 </style>
 """, unsafe_allow_html=True)
@@ -115,6 +158,21 @@ def sig_badge(sig):
     else:             c = "hold"
     return f'<span class="badge badge-{c}">{sig}</span>'
 
+def score_bar_html(score):
+    """Visual bar showing -10 to +10 composite score."""
+    pct_pos = (score + 10) / 20 * 100
+    c = GREEN if score > 1 else RED if score < -1 else AMBER
+    return f"""
+    <div class="score-bar-container">
+      <div class="score-bar" style="left:0;width:{pct_pos:.0f}%;background:{c};"></div>
+      <div style="position:absolute;left:50%;top:-1px;width:1px;height:10px;background:{DIM};"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:9px;color:{DIM};font-family:monospace;">
+      <span>-10</span>
+      <span style="color:{c};font-weight:700;">{score:+.1f}</span>
+      <span>+10</span>
+    </div>"""
+
 def pick_card(p):
     sc = GREEN if p["status"] == "ACTIVE" else AMBER
     t = p.get("tech", {})
@@ -126,11 +184,11 @@ def pick_card(p):
     <div class="stock-card">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;">
         <div>
-          <span style="font-size:17px;font-weight:800;color:{WHITE};">{p["ticker"]}</span>
+          <span style="font-size:17px;font-weight:800;color:{GREEN};font-family:monospace;">{p["ticker"]}</span>
           <span style="font-size:12px;color:{DIM};margin-left:8px;">{p["name"]}</span>
         </div>
         <div>
-          <span style="font-size:14px;font-weight:700;color:{WHITE};">{dlr(p["current_price"])}</span>
+          <span style="font-size:14px;font-weight:700;color:{WHITE};font-family:monospace;">{dlr(p["current_price"])}</span>
           <span style="margin-left:8px;color:{clr(p['day_chg'])};font-weight:700;">{pct(p["day_chg"])}</span>
           <span class="badge" style="margin-left:8px;background:{sc}1a;color:{sc};">{p["status"]}</span>
         </div>
@@ -159,11 +217,105 @@ def pick_card(p):
     </div>"""
 
 
+def build_plotly_chart(ticker: str, tech: dict) -> go.Figure:
+    """Build an interactive Plotly candlestick + RSI chart for a ticker."""
+    from ta.trend import EMAIndicator
+    from ta.volatility import BollingerBands
+    from ta.momentum import RSIIndicator, StochRSIIndicator
+
+    df = get_hist(ticker, "90d", "1d")
+    if df.empty or len(df) < 10:
+        fig = go.Figure()
+        fig.add_annotation(text="Insufficient data", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
+        fig.update_layout(template="plotly_dark", height=400)
+        return fig
+
+    df = df.tail(60).copy()
+    close = df["Close"]
+
+    ema20 = EMAIndicator(close=close, window=min(20, len(close))).ema_indicator()
+    ema50 = EMAIndicator(close=close, window=min(50, len(close))).ema_indicator()
+    bb = BollingerBands(close=close, window=min(20, len(close)), window_dev=2)
+    bb_upper = bb.bollinger_hband()
+    bb_lower = bb.bollinger_lband()
+
+    # VWAP
+    tp = (df["High"] + df["Low"] + df["Close"]) / 3
+    cum_tp_vol = (tp * df["Volume"]).cumsum()
+    cum_vol = df["Volume"].cumsum()
+    vwap = cum_tp_vol / cum_vol
+
+    # RSI
+    rsi = RSIIndicator(close=close, window=14).rsi()
+
+    # Stochastic RSI
+    stoch_rsi = None
+    try:
+        stoch_rsi = StochRSIIndicator(close=close, window=14, smooth1=3, smooth2=3).stochrsi()
+    except Exception:
+        pass
+
+    fig = make_subplots(rows=2, cols=1, shared_xaxes=True,
+                        vertical_spacing=0.03, row_heights=[0.7, 0.3])
+
+    fig.add_trace(go.Candlestick(
+        x=df.index, open=df["Open"], high=df["High"], low=df["Low"], close=df["Close"],
+        name="OHLC", increasing_line_color=GREEN, decreasing_line_color=RED), row=1, col=1)
+
+    fig.add_trace(go.Scatter(x=df.index, y=ema20, name="EMA 20",
+                             line=dict(color=BLUE, width=1)), row=1, col=1)
+    fig.add_trace(go.Scatter(x=df.index, y=ema50, name="EMA 50",
+                             line=dict(color="#FF8800", width=1)), row=1, col=1)
+
+    fig.add_trace(go.Scatter(x=df.index, y=bb_upper, name="BB Upper",
+                             line=dict(color="rgba(150,150,150,0.3)", width=1), showlegend=False), row=1, col=1)
+    fig.add_trace(go.Scatter(x=df.index, y=bb_lower, name="BB Band",
+                             line=dict(color="rgba(150,150,150,0.3)", width=1),
+                             fill="tonexty", fillcolor="rgba(150,150,150,0.08)"), row=1, col=1)
+
+    fig.add_trace(go.Scatter(x=df.index, y=vwap, name="VWAP",
+                             line=dict(color=AMBER, width=1, dash="dash")), row=1, col=1)
+
+    # Support / Resistance lines
+    if tech.get("support"):
+        fig.add_hline(y=tech["support"], line_dash="dot", line_color=GREEN, opacity=0.5,
+                      annotation_text=f"Support ${tech['support']}", row=1, col=1)
+    if tech.get("resistance"):
+        fig.add_hline(y=tech["resistance"], line_dash="dot", line_color=RED, opacity=0.5,
+                      annotation_text=f"Resistance ${tech['resistance']}", row=1, col=1)
+
+    # RSI subplot
+    fig.add_trace(go.Scatter(x=df.index, y=rsi, name="RSI",
+                             line=dict(color=CYAN, width=1.5)), row=2, col=1)
+    if stoch_rsi is not None:
+        fig.add_trace(go.Scatter(x=df.index, y=stoch_rsi * 100, name="StochRSI",
+                                 line=dict(color=PURPLE, width=1)), row=2, col=1)
+    fig.add_hline(y=70, line_dash="dash", line_color=RED, opacity=0.4, row=2, col=1)
+    fig.add_hline(y=30, line_dash="dash", line_color=GREEN, opacity=0.4, row=2, col=1)
+    fig.add_hrect(y0=70, y1=100, fillcolor=RED, opacity=0.05, row=2, col=1)
+    fig.add_hrect(y0=0, y1=30, fillcolor=GREEN, opacity=0.05, row=2, col=1)
+
+    fig.update_layout(
+        template="plotly_dark",
+        title=f"{ticker} — Last 60 Days",
+        height=500,
+        margin=dict(l=50, r=20, t=40, b=20),
+        xaxis_rangeslider_visible=False,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        paper_bgcolor=BG,
+        plot_bgcolor=CARD,
+    )
+    fig.update_yaxes(title_text="Price", row=1, col=1)
+    fig.update_yaxes(title_text="RSI", row=2, col=1, range=[0, 100])
+
+    return fig
+
+
 # ═════════════════════════════════════════════════════════════════
 #  CUSTOM PORTFOLIO ANALYSIS (for user-entered stocks)
 # ═════════════════════════════════════════════════════════════════
 def analyse_user_portfolio(portfolio: list[dict]) -> list[dict]:
-    """Same as main.py's analyse_portfolio but works for any user's stocks."""
+    """Same pipeline as main.py but works for any user's stocks with composite scoring."""
     results = []
     for pos in portfolio:
         tk, shares, avg = pos["ticker"].upper().strip(), pos["shares"], pos["avg_cost"]
@@ -187,12 +339,19 @@ def analyse_user_portfolio(portfolio: list[dict]) -> list[dict]:
         elif mcap_r and mcap_r >= 1e6: mcap = f"${mcap_r/1e6:.1f}M"
         else: mcap = "N/A"
 
-        sig, reason = signal_logic(tk, cur, opnl_p, pe, dpnl_p, hi52)
         tech = compute_technicals(tk)
         fins = get_financials(tk)
         earn = get_earnings_info(tk)
         anly = get_analyst_data(tk)
         news = get_ticker_news(tk)
+        rel_str = get_relative_strength(tk)
+
+        scoring = compute_signal_score(
+            tk, tech, fins, anly, news,
+            price=cur, pnl=opnl_p, day_chg=dpnl_p, hi52=hi52)
+        sig = scoring["signal"]
+        reason = scoring["reasoning"]
+
         timeline = _timeline_block(tk, cur, tech, earn)
         action = _action_text(sig, {"shares": shares, "current_price": cur})
 
@@ -207,8 +366,10 @@ def analyse_user_portfolio(portfolio: list[dict]) -> list[dict]:
             "lo52": round(lo52, 2) if lo52 else None,
             "range_pct": round(rng, 1) if rng is not None else None,
             "signal": sig, "reason": reason, "action": action,
+            "score": scoring["score"], "score_breakdown": scoring["breakdown"],
             "strategy": "", "tech": tech, "fins": fins, "earn": earn,
             "analyst": anly, "news": news, "timeline": timeline,
+            "relative_strength": rel_str,
         })
     return results
 
@@ -249,7 +410,6 @@ def send_user_email(recipient: str, holdings: list[dict], risk_d: dict,
 
     mood_c = G if sp.get("spy_mood") == "Bullish" else R if sp.get("spy_mood") == "Bearish" else AM
 
-    # ── Per-stock detail cards ──
     cards = ""
     for h in holdings:
         t = h.get("tech", {}); e = h.get("earn", {}); a = h.get("analyst", {})
@@ -266,15 +426,40 @@ def send_user_email(recipient: str, holdings: list[dict], risk_d: dict,
             info_parts.append(f'Target: ${a["target_low"]:.0f} / ${a["target_mean"]:.0f} / ${a["target_high"]:.0f}')
         info_parts.append(f'Insider (30d): {a.get("insider_buys",0)} buys / {a.get("insider_sells",0)} sells')
 
+        # Sentiment
+        news_data = h.get("news", {})
+        sent = news_data.get("sentiment_score", 0) if isinstance(news_data, dict) else 0
+        sent_c = G if sent > 0.3 else R if sent < -0.3 else D
+        sent_lbl = "Bullish" if sent > 0.3 else "Bearish" if sent < -0.3 else "Neutral"
+
+        # Score breakdown
+        bd = h.get("score_breakdown", {})
+        sc = h.get("score", 0)
+        sc_c = G if sc > 1 else R if sc < -1 else AM
+        bd_rows = ""
+        for comp, val in bd.items():
+            if val == 0: continue
+            vc = G if val > 0 else R
+            bd_rows += f'<tr><td style="padding:2px 6px;color:{T};font-size:10px;">{comp.replace("_"," ").title()}</td><td style="padding:2px 6px;color:{vc};font-size:10px;font-weight:700;text-align:right;">{val:+.1f}</td></tr>'
+
+        # Relative strength
+        rs = h.get("relative_strength", {})
+        rs_val = rs.get("relative_strength", 0) if rs else 0
+        rs_out = rs.get("outperforming", False) if rs else False
+        rs_c = G if rs_out else R
+
         cards += f"""
         <div style="background:{C};border:1px solid {BD};border-radius:10px;padding:18px 22px;margin-bottom:14px;">
           <table width="100%" cellpadding="0" cellspacing="0"><tr>
             <td style="padding:0;"><span style="font-size:18px;font-weight:800;color:{W};">{h["ticker"]}</span>
               <span style="font-size:12px;color:{D};margin-left:8px;">{h["name"]}</span></td>
-            <td style="padding:0;text-align:right;">{sig_html(h["signal"])}</td>
+            <td style="padding:0;text-align:right;">{sig_html(h["signal"])}
+              <span style="margin-left:8px;font-size:11px;color:{sc_c};font-weight:700;">Score: {sc:+.1f}</span></td>
           </tr></table>
           <div style="font-size:11px;color:{D};margin-top:4px;font-style:italic;">{h["reason"]}</div>
           <div style="font-size:12px;color:{AM};margin-top:4px;font-weight:600;">Action: {h["action"]}</div>
+          <div style="margin-top:4px;font-size:10px;color:{sent_c};font-weight:600;">News Sentiment: {sent_lbl} ({sent:+.2f})</div>
+          <div style="margin-top:4px;font-size:10px;color:{rs_c};font-weight:600;">vs Sector: {"+" if rs_out else ""}{rs_val:.1f}%</div>
 
           <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:12px;background:{A};border-radius:6px;">
             <tr>
@@ -300,6 +485,8 @@ def send_user_email(recipient: str, holdings: list[dict], risk_d: dict,
             {"<br>".join(info_parts)}
           </div>
 
+          {"" if not bd_rows else f'<div style="margin-top:8px;padding:8px 10px;background:{A};border-radius:5px;"><div style="font-size:9px;color:{D};margin-bottom:4px;">SCORE BREAKDOWN</div><table width="100%" cellpadding="0" cellspacing="0">{bd_rows}</table></div>'}
+
           <div style="margin-top:10px;padding:10px 14px;background:{A};border-radius:6px;font-size:11px;line-height:1.7;">
             <div style="color:{CY};font-weight:600;">Short-term (0-30d):</div>
             <div style="color:{T};">{tl.get("short_level","N/A")}<br>{tl.get("short_trigger","")}</div>
@@ -310,7 +497,6 @@ def send_user_email(recipient: str, holdings: list[dict], risk_d: dict,
           </div>
         </div>"""
 
-    # ── Technicals table ──
     tech_rows = ""
     for h in holdings:
         t = h.get("tech", {})
@@ -325,14 +511,13 @@ def send_user_email(recipient: str, holdings: list[dict], risk_d: dict,
           <td style="padding:8px 10px;color:{T};border-bottom:1px solid {BD};">{t.get("vol_label","N/A")}</td>
         </tr>"""
 
-    # ── Risk dashboard ──
     risk_rows = ""
     for p in risk_d.get("positions", []):
         risk_rows += f"""<tr style="background:{C};">
           <td style="padding:6px 10px;color:{W};font-weight:700;border-bottom:1px solid {BD};">{p["ticker"]}</td>
           <td style="padding:6px 10px;color:{T};border-bottom:1px solid {BD};">{p["weight"]:.1f}%</td>
           <td style="padding:6px 10px;color:{T};border-bottom:1px solid {BD};">{p["beta"]:.2f}</td>
-          <td style="padding:6px 10px;color:{T};border-bottom:1px solid {BD};">${p["risk_1d"]:,.2f}</td>
+          <td style="padding:6px 10px;color:{R};border-bottom:1px solid {BD};">${p["risk_1d"]:,.2f}</td>
         </tr>"""
 
     sector_html = ""
@@ -342,8 +527,6 @@ def send_user_email(recipient: str, holdings: list[dict], risk_d: dict,
     html = f"""<html><head><meta charset="utf-8"></head>
     <body style="margin:0;padding:0;background:{B};font-family:'Segoe UI',Arial,sans-serif;">
     <div style="max-width:700px;margin:0 auto;padding:20px;">
-
-      <!-- HEADER -->
       <div style="background:linear-gradient(135deg,{C},{A});border-radius:12px;padding:20px 24px;
                   margin-bottom:16px;border:1px solid {BD};">
         <table width="100%" cellpadding="0" cellspacing="0"><tr>
@@ -362,8 +545,6 @@ def send_user_email(recipient: str, holdings: list[dict], risk_d: dict,
           </td>
         </tr></table>
       </div>
-
-      <!-- PORTFOLIO KPIs -->
       <div style="background:{C};border-radius:10px;padding:16px 20px;margin-bottom:16px;border:1px solid {BD};">
         <div style="font-size:13px;color:{AM};font-weight:700;margin-bottom:10px;">PORTFOLIO SUMMARY</div>
         <table width="100%" cellpadding="0" cellspacing="0">
@@ -375,75 +556,26 @@ def send_user_email(recipient: str, holdings: list[dict], risk_d: dict,
           </tr>
         </table>
       </div>
-
-      <!-- STOCK DETAIL CARDS -->
       <div style="font-size:15px;font-weight:700;color:{W};margin-bottom:10px;">YOUR HOLDINGS</div>
       {cards}
-
-      <!-- TECHNICALS -->
-      <div style="font-size:15px;font-weight:700;color:{W};margin:20px 0 10px;">TECHNICAL SNAPSHOT</div>
-      <div style="overflow-x:auto;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
-          <thead><tr style="background:{A};">
-            <th style="padding:8px 10px;text-align:left;color:{D};font-size:9px;text-transform:uppercase;border-bottom:2px solid {BD};">Ticker</th>
-            <th style="padding:8px 10px;text-align:left;color:{D};font-size:9px;text-transform:uppercase;border-bottom:2px solid {BD};">Price</th>
-            <th style="padding:8px 10px;text-align:left;color:{D};font-size:9px;text-transform:uppercase;border-bottom:2px solid {BD};">RSI</th>
-            <th style="padding:8px 10px;text-align:left;color:{D};font-size:9px;text-transform:uppercase;border-bottom:2px solid {BD};">Signal</th>
-            <th style="padding:8px 10px;text-align:left;color:{D};font-size:9px;text-transform:uppercase;border-bottom:2px solid {BD};">MACD</th>
-            <th style="padding:8px 10px;text-align:left;color:{D};font-size:9px;text-transform:uppercase;border-bottom:2px solid {BD};">Bollinger</th>
-            <th style="padding:8px 10px;text-align:left;color:{D};font-size:9px;text-transform:uppercase;border-bottom:2px solid {BD};">EMA</th>
-            <th style="padding:8px 10px;text-align:left;color:{D};font-size:9px;text-transform:uppercase;border-bottom:2px solid {BD};">Volume</th>
-          </tr></thead>
-          <tbody>{tech_rows}</tbody>
-        </table>
-      </div>
-
-      <!-- RISK DASHBOARD -->
-      <div style="font-size:15px;font-weight:700;color:{W};margin:20px 0 10px;">RISK DASHBOARD</div>
-      <div style="background:{C};border-radius:10px;padding:16px 20px;margin-bottom:14px;border:1px solid {BD};">
-        <table width="100%" cellpadding="0" cellspacing="0">
-          <tr>
-            {kpi("Weighted Beta", f'{risk_d["weighted_beta"]:.2f}', W)}
-            {kpi("Risk Rating", risk_d["risk_rating"], AM)}
-            {kpi("1-Day 95% VaR", f'${risk_d["var_95"]:,.2f}', R)}
-          </tr>
-        </table>
-        {"" if not risk_rows else f'''
-        <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:10px;border-collapse:collapse;">
-          <thead><tr style="background:{A};">
-            <th style="padding:6px 10px;text-align:left;color:{D};font-size:9px;text-transform:uppercase;border-bottom:2px solid {BD};">Ticker</th>
-            <th style="padding:6px 10px;text-align:left;color:{D};font-size:9px;text-transform:uppercase;border-bottom:2px solid {BD};">Weight</th>
-            <th style="padding:6px 10px;text-align:left;color:{D};font-size:9px;text-transform:uppercase;border-bottom:2px solid {BD};">Beta</th>
-            <th style="padding:6px 10px;text-align:left;color:{D};font-size:9px;text-transform:uppercase;border-bottom:2px solid {BD};">1-Day Risk</th>
-          </tr></thead>
-          <tbody>{risk_rows}</tbody>
-        </table>'''}
-        {"" if not sector_html else f'<div style="margin-top:10px;"><div style="font-size:10px;color:{D};margin-bottom:4px;">SECTOR EXPOSURE</div>{sector_html}</div>'}
-      </div>
-
-      <!-- FOOTER -->
       <div style="text-align:center;padding:16px 0;">
         <div style="font-size:10px;color:{D};">Generated by AI Stock Analyst | Not financial advice</div>
       </div>
     </div></body></html>"""
 
-    # Plain-text fallback
     text = f"AI Stock Analyst Report -- {today_s}\n"
     text += f"S&P 500: ${sp['price']:,.2f} ({sp['change']:+.2f}%)\n\n"
     for h in holdings:
         t = h.get("tech", {}); tl = h.get("timeline", {})
         rsi_s = f'RSI {t["rsi"]:.0f} ({t["rsi_label"]})' if t.get("rsi") else "RSI N/A"
         text += f"{'='*50}\n"
-        text += f"{h['ticker']}  {h['name']}\n"
+        text += f"{h['ticker']}  {h['name']}  Score: {h.get('score',0):+.1f}\n"
         text += f"  Price: ${h['current_price']:,.2f}  |  Avg: ${h['avg_cost']:,.2f}  |  Shares: {int(h['shares'])}\n"
         text += f"  Open P&L: ${h['open_pnl']:+,.2f} ({h['open_pnl_pct']:+.2f}%)\n"
         text += f"  Day P&L:  ${h['day_pnl']:+,.2f} ({h['day_pnl_pct']:+.2f}%)\n"
         text += f"  Signal: {h['signal']} -- {h['reason']}\n"
         text += f"  Action: {h['action']}\n"
-        text += f"  PE: {h['pe'] or 'N/A'}  |  {rsi_s}  |  MACD: {t.get('macd_label','N/A')}\n"
-        text += f"  Short: {tl.get('short_level','N/A')} | {tl.get('short_trigger','')}\n"
-        text += f"  Medium: {tl.get('med_catalyst','N/A')} | {tl.get('med_target','')}\n"
-        text += f"  Long: {tl.get('long_thesis','N/A')} | Invalidate: {tl.get('long_invalidate','N/A')}\n\n"
+        text += f"  PE: {h['pe'] or 'N/A'}  |  {rsi_s}  |  MACD: {t.get('macd_label','N/A')}\n\n"
     text += f"Risk: Beta {risk_d['weighted_beta']:.2f} | VaR ${risk_d['var_95']:,.2f} | {risk_d['risk_rating']}\n"
 
     msg = MIMEMultipart("alternative")
@@ -458,9 +590,7 @@ def send_user_email(recipient: str, holdings: list[dict], risk_d: dict,
 
     try:
         with smtplib.SMTP("smtp.gmail.com", 587, timeout=20) as srv:
-            srv.ehlo()
-            srv.starttls()
-            srv.ehlo()
+            srv.ehlo(); srv.starttls(); srv.ehlo()
             srv.login(sender, password)
             srv.sendmail(sender, recipients, raw)
         return True, None
@@ -517,11 +647,11 @@ if "num_stocks" not in st.session_state:
 with st.sidebar:
     st.markdown(f"""
     <div style="text-align:center;padding:10px 0 4px;">
-      <div style="font-size:22px;font-weight:800;color:{WHITE};">AI Stock Analyst</div>
-      <div style="font-size:11px;color:{DIM};margin-top:2px;">FREE PORTFOLIO ANALYZER</div>
+      <div style="font-size:22px;font-weight:800;color:{GREEN};font-family:monospace;">AI Stock Analyst</div>
+      <div style="font-size:11px;color:{DIM};margin-top:2px;font-family:monospace;">FREE PORTFOLIO ANALYZER</div>
     </div>""", unsafe_allow_html=True)
     st.markdown(
-        f'<div style="text-align:center;color:{DIM};font-size:12px;">'
+        f'<div style="text-align:center;color:{DIM};font-size:12px;font-family:monospace;">'
         f'{datetime.date.today().strftime("%A, %B %d, %Y")}</div>',
         unsafe_allow_html=True,
     )
@@ -530,14 +660,14 @@ with st.sidebar:
     if st.session_state.portfolio_submitted:
         st.markdown(
             f'<div style="font-size:11px;color:{DIM};font-weight:600;'
-            f'text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">'
+            f'text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;font-family:monospace;">'
             f'Your Portfolio</div>',
             unsafe_allow_html=True,
         )
         for p in st.session_state.user_portfolio:
             st.markdown(
-                f'<div style="padding:4px 0;font-size:13px;">'
-                f'<span style="color:{WHITE};font-weight:700;">{p["ticker"]}</span>'
+                f'<div style="padding:4px 0;font-size:13px;font-family:monospace;">'
+                f'<span style="color:{GREEN};font-weight:700;">{p["ticker"]}</span>'
                 f' <span style="color:{DIM};">-- {p["shares"]} @ {dlr(p["avg_cost"])}</span>'
                 f'</div>',
                 unsafe_allow_html=True,
@@ -566,7 +696,7 @@ with st.sidebar:
 
     st.divider()
     st.markdown(f"""
-    <div style="font-size:10px;color:{DIM};text-align:center;line-height:1.6;">
+    <div style="font-size:10px;color:{DIM};text-align:center;line-height:1.6;font-family:monospace;">
       Data: Yahoo Finance | Finnhub | Google News<br>Not financial advice
     </div>""", unsafe_allow_html=True)
 
@@ -577,7 +707,7 @@ with st.sidebar:
 if not st.session_state.portfolio_submitted:
     st.markdown(f"""
     <div style="text-align:center;margin:40px 0 20px;">
-      <div class="hero-title">Get Your Free Stock Analysis</div>
+      <div class="hero-title">&gt; Get Your Free Stock Analysis<span class="cursor-blink"></span></div>
       <div class="hero-sub">
         Enter your positions below. We'll analyze every stock with<br>
         technical indicators, PE ratios, analyst ratings, news, and<br>
@@ -591,8 +721,8 @@ if not st.session_state.portfolio_submitted:
 
     with col_form:
         st.markdown(
-            f'<div style="font-size:16px;font-weight:700;color:{WHITE};margin-bottom:12px;">'
-            f'Your Positions</div>',
+            f'<div style="font-size:16px;font-weight:700;color:{GREEN};margin-bottom:12px;font-family:monospace;">'
+            f'$ enter_positions</div>',
             unsafe_allow_html=True,
         )
 
@@ -604,7 +734,7 @@ if not st.session_state.portfolio_submitted:
             form_tickers = []
             for i in range(int(num)):
                 st.markdown(
-                    f'<div style="font-size:12px;color:{AMBER};font-weight:600;margin-top:10px;">'
+                    f'<div style="font-size:12px;color:{AMBER};font-weight:600;margin-top:10px;font-family:monospace;">'
                     f'Stock #{i+1}</div>',
                     unsafe_allow_html=True,
                 )
@@ -639,16 +769,19 @@ if not st.session_state.portfolio_submitted:
 
     with col_preview:
         st.markdown(
-            f'<div style="font-size:16px;font-weight:700;color:{WHITE};margin-bottom:12px;">'
-            f'What You Get</div>',
+            f'<div style="font-size:16px;font-weight:700;color:{GREEN};margin-bottom:12px;font-family:monospace;">'
+            f'$ what_you_get</div>',
             unsafe_allow_html=True,
         )
         features = [
-            ("BUY / SELL / HOLD signals", "Per-ticker based on PE, RSI, and price action"),
-            ("Technical Indicators", "RSI, MACD, Bollinger Bands, EMA, ATR levels"),
+            ("BUY / SELL / HOLD signals + Score", "Composite score -10 to +10 with full breakdown"),
+            ("Technical Indicators", "RSI, StochRSI, MACD, Bollinger, EMA, VWAP, OBV, Support/Resistance"),
+            ("Interactive Charts", "Candlestick charts with overlays and RSI subplot"),
             ("Analyst Ratings", "Buy/Hold/Sell counts + price targets from Wall Street"),
             ("Earnings Alerts", "Upcoming earnings dates with EPS estimates"),
             ("Risk Dashboard", "Portfolio beta, sector exposure, 1-day VaR"),
+            ("Sector Relative Strength", "Your stock vs its sector ETF performance"),
+            ("News Sentiment", "AI-powered headline sentiment scoring"),
             ("Trade Ideas", "Curated momentum and swing picks with entry/stop/target"),
             ("Email Report", "Full analysis delivered to your inbox"),
         ]
@@ -707,7 +840,7 @@ if st.session_state.portfolio_submitted:
           <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
         </svg>
       </div>
-      <div style="font-size:22px;font-weight:800;color:{WHITE};">Analyzing Your Portfolio</div>
+      <div style="font-size:22px;font-weight:800;color:{GREEN};font-family:monospace;">Analyzing Your Portfolio</div>
       <div id="load-status" style="font-size:13px;color:{DIM};margin-top:8px;">
         Fetching live market data...</div>
       <div class="load-bar-bg"><div class="load-bar-fill"></div></div>
@@ -730,23 +863,42 @@ if st.session_state.portfolio_submitted:
 
     loading.empty()
 
-    # ── HEADER ──
+    # ── HEADER BAR ──
     mood_c = GREEN if sp["spy_mood"] == "Bullish" else RED if sp["spy_mood"] == "Bearish" else AMBER
+    mood_icon = "🟢" if sp["spy_mood"] == "Bullish" else "🔴" if sp["spy_mood"] == "Bearish" else "🟡"
+    buy_count = sum(1 for h in holdings if h["signal"] == "BUY")
+    tv = sum(h["market_value"] for h in holdings)
+    tc = sum(h["total_cost"] for h in holdings)
+    tp = tv - tc
+    tpc = tp / tc * 100 if tc else 0
+    tdp = sum(h["day_pnl"] for h in holdings)
+    now_str = datetime.datetime.now().strftime("%I:%M %p")
+
     st.markdown(f"""
     <div style="background:linear-gradient(135deg,{CARD},{ALT});border-radius:12px;
-                padding:20px 24px;margin-bottom:16px;border:1px solid {BORDER};">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-        <div>
-          <span style="font-size:20px;font-weight:800;color:{WHITE};">Your Stock Analysis</span>
-          <span style="font-size:11px;color:{DIM};margin-left:12px;">
-            {datetime.datetime.now().strftime("%I:%M %p")}</span>
+                padding:16px 24px;margin-bottom:16px;border:1px solid {BORDER};
+                display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+      <div>
+        <span style="font-size:20px;font-weight:800;color:{GREEN};font-family:monospace;">AI Stock Analyst</span>
+        <span style="font-size:11px;color:{DIM};margin-left:12px;font-family:monospace;">{now_str}</span>
+      </div>
+      <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;">
+        <div style="text-align:center;">
+          <div style="font-size:9px;color:{DIM};text-transform:uppercase;font-family:monospace;">SPY Mood</div>
+          <div style="font-size:14px;font-weight:700;color:{mood_c};">{mood_icon} {sp['spy_mood']}</div>
         </div>
-        <div style="text-align:right;">
-          <span style="color:{DIM};font-size:11px;">S&amp;P 500</span>
-          <span style="font-size:18px;font-weight:800;color:{WHITE};margin-left:8px;">{dlr(sp['price'])}</span>
-          <span style="color:{clr(sp['change'])};font-weight:700;margin-left:8px;">{pct(sp['change'])}</span>
-          <span style="margin-left:16px;color:{DIM};font-size:11px;">SPY</span>
-          <span style="color:{mood_c};font-weight:700;margin-left:4px;">{sp['spy_mood']}</span>
+        <div style="text-align:center;">
+          <div style="font-size:9px;color:{DIM};text-transform:uppercase;font-family:monospace;">S&amp;P 500</div>
+          <div style="font-size:14px;font-weight:700;color:{WHITE};font-family:monospace;">{dlr(sp['price'])}
+            <span style="color:{clr(sp['change'])};">{pct(sp['change'])}</span></div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:9px;color:{DIM};text-transform:uppercase;font-family:monospace;">BUY Signals</div>
+          <div style="font-size:14px;font-weight:700;color:{GREEN};">{buy_count}</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:9px;color:{DIM};text-transform:uppercase;font-family:monospace;">Total P&amp;L</div>
+          <div style="font-size:14px;font-weight:700;color:{clr(tp)};font-family:monospace;">{"+" if tp>=0 else ""}{dlr(tp)}</div>
         </div>
       </div>
     </div>""", unsafe_allow_html=True)
@@ -758,11 +910,6 @@ if st.session_state.portfolio_submitted:
         st.warning(f"Could not send email{detail} -- but your dashboard is ready below.")
 
     # ── KPI ROW ──
-    tv = sum(h["market_value"] for h in holdings)
-    tc = sum(h["total_cost"] for h in holdings)
-    tp = tv - tc
-    tpc = tp / tc * 100 if tc else 0
-    tdp = sum(h["day_pnl"] for h in holdings)
     k1, k2, k3, k4 = st.columns(4)
     k1.metric("Portfolio Value", dlr(tv))
     k2.metric("Total Cost", dlr(tc))
@@ -781,8 +928,21 @@ if st.session_state.portfolio_submitted:
             pe_s = f'{h["pe"]:.1f}' if h["pe"] else "N/A"
             t = h["tech"]
             rsi_s = f'{t["rsi"]:.0f} ({t["rsi_label"]})' if t.get("rsi") else "N/A"
+            stoch_s = f'{t["stoch_rsi"]:.3f} ({t["stoch_rsi_label"]})' if t.get("stoch_rsi") is not None else "N/A"
+            vwap_s = f'{dlr(t["vwap"])} ({t["vwap_label"]})' if t.get("vwap") else "N/A"
             tl = h["timeline"]
             e = h["earn"]; a = h["analyst"]
+            fins = h.get("fins", {})
+            news_data = h.get("news", {})
+            sent = news_data.get("sentiment_score", 0) if isinstance(news_data, dict) else 0
+            sent_c = GREEN if sent > 0.3 else RED if sent < -0.3 else DIM
+            sent_lbl = "Bullish" if sent > 0.3 else "Bearish" if sent < -0.3 else "Neutral"
+
+            rs = h.get("relative_strength", {})
+            rs_val = rs.get("relative_strength", 0) if rs else 0
+            rs_out = rs.get("outperforming", False) if rs else False
+            rs_c = GREEN if rs_out else RED
+
             info_parts = []
             if e.get("days_to_earnings") is not None:
                 info_parts.append(f'Earnings in {e["days_to_earnings"]}d'
@@ -791,27 +951,50 @@ if st.session_state.portfolio_submitted:
             if a.get("target_mean"):
                 info_parts.append(f'Target: ${a["target_low"]:.0f} / ${a["target_mean"]:.0f} / ${a["target_high"]:.0f}')
             info_parts.append(f'Insider (30d): {a["insider_buys"]} buys / {a["insider_sells"]} sells')
+            if fins.get("peg") is not None:
+                info_parts.append(f'PEG: {fins["peg"]:.2f} ({fins["peg_label"]})')
+            if fins.get("z_score") is not None:
+                info_parts.append(f'Altman Z: {fins["z_score"]:.2f} ({fins["z_label"]})')
+            if fins.get("est_revision") and fins["est_revision"] != "N/A":
+                info_parts.append(f'EPS Estimates: {fins["est_revision"]}')
             info_html = "<br>".join(info_parts)
 
+            # Stock card with two-column layout
             st.markdown(f"""
             <div class="stock-card">
-              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;">
-                <div>
-                  <span style="font-size:18px;font-weight:800;color:{WHITE};">{h["ticker"]}</span>
-                  <span style="font-size:12px;color:{DIM};margin-left:8px;">{h["name"]}</span>
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
+                <div style="flex:1;min-width:280px;">
+                  <div>
+                    <span style="font-size:22px;font-weight:800;color:{GREEN};font-family:monospace;">{h["ticker"]}</span>
+                    <span style="font-size:12px;color:{DIM};margin-left:8px;">{h["name"]}</span>
+                    <span style="margin-left:12px;">{sig_badge(h["signal"])}</span>
+                  </div>
+                  <div style="font-size:18px;font-weight:700;color:{WHITE};margin-top:6px;font-family:monospace;">
+                    {dlr(h["current_price"])}
+                    <span style="font-size:13px;color:{dc};margin-left:8px;">Day {pct(h["day_pnl_pct"])}</span>
+                  </div>
+                  <div style="margin-top:4px;">
+                    <span style="color:{oc};font-weight:700;font-family:monospace;">P&L {"+" if h["open_pnl"]>=0 else ""}{dlr(h["open_pnl"])} ({pct(h["open_pnl_pct"])})</span>
+                  </div>
+                  <div style="font-size:11px;color:{DIM};margin-top:4px;font-style:italic;">{h["reason"]}</div>
+                  <div style="font-size:12px;color:{AMBER};margin-top:4px;font-weight:600;">Action: {h["action"]}</div>
+                  <div style="margin-top:4px;font-size:10px;color:{sent_c};font-weight:600;">News Sentiment: {sent_lbl} ({sent:+.2f})</div>
+                  <div style="margin-top:2px;font-size:10px;color:{rs_c};font-weight:600;">vs Sector: {"+" if rs_out else ""}{rs_val:.1f}%</div>
+                  {score_bar_html(h.get("score", 0))}
                 </div>
-                <div>{sig_badge(h["signal"])}</div>
-              </div>
-              <div style="font-size:11px;color:{DIM};margin-top:4px;font-style:italic;">{h["reason"]}</div>
-              <div style="font-size:12px;color:{AMBER};margin-top:4px;font-weight:600;">Action: {h["action"]}</div>
-              <div style="display:flex;gap:24px;margin-top:12px;flex-wrap:wrap;">
-                <div><div class="kpi-label">Price</div><div class="kpi-value" style="color:{WHITE};">{dlr(h["current_price"])}</div></div>
-                <div><div class="kpi-label">Avg Cost</div><div class="kpi-value" style="color:{TEXT};">{dlr(h["avg_cost"])}</div></div>
-                <div><div class="kpi-label">Shares</div><div class="kpi-value" style="color:{WHITE};">{int(h["shares"])}</div></div>
-                <div><div class="kpi-label">PE</div><div class="kpi-value" style="color:{AMBER};">{pe_s}</div></div>
-                <div><div class="kpi-label">RSI</div><div class="kpi-value" style="color:{WHITE};">{rsi_s}</div></div>
-                <div><div class="kpi-label">Open P&L</div><div class="kpi-value" style="color:{oc};">{"+" if h["open_pnl"]>=0 else ""}{dlr(h["open_pnl"])}</div><div style="font-size:10px;color:{oc};">{pct(h["open_pnl_pct"])}</div></div>
-                <div><div class="kpi-label">Day P&L</div><div class="kpi-value" style="color:{dc};">{"+" if h["day_pnl"]>=0 else ""}{dlr(h["day_pnl"])}</div><div style="font-size:10px;color:{dc};">{pct(h["day_pnl_pct"])}</div></div>
+                <div style="flex:0 0 260px;">
+                  <div style="padding:10px 14px;background:{ALT};border-radius:6px;font-size:11px;line-height:1.8;font-family:monospace;">
+                    <div><span style="color:{DIM};">RSI:</span> <span style="color:{WHITE};">{rsi_s}</span></div>
+                    <div><span style="color:{DIM};">StochRSI:</span> <span style="color:{WHITE};">{stoch_s}</span></div>
+                    <div><span style="color:{DIM};">MACD:</span> <span style="color:{WHITE};">{t.get('macd_label','N/A')}</span></div>
+                    <div><span style="color:{DIM};">VWAP:</span> <span style="color:{WHITE};">{vwap_s}</span></div>
+                    <div><span style="color:{DIM};">OBV:</span> <span style="color:{WHITE};">{t.get('obv_trend','N/A')}</span></div>
+                    <div><span style="color:{DIM};">S/R:</span> <span style="color:{WHITE};">{t.get('sr_label','N/A')}</span></div>
+                    <div><span style="color:{DIM};">Support:</span> <span style="color:{GREEN};">{dlr(t['support']) if t.get('support') else 'N/A'}</span></div>
+                    <div><span style="color:{DIM};">Resist:</span> <span style="color:{RED};">{dlr(t['resistance']) if t.get('resistance') else 'N/A'}</span></div>
+                    <div><span style="color:{DIM};">PE:</span> <span style="color:{AMBER};">{pe_s}</span></div>
+                  </div>
+                </div>
               </div>
               <div style="margin-top:10px;padding:10px 14px;background:{ALT};border-radius:6px;font-size:11px;color:{TEXT};line-height:1.7;">{info_html}</div>
               <div style="margin-top:10px;padding:10px 14px;background:{ALT};border-radius:6px;font-size:11px;line-height:1.7;">
@@ -821,33 +1004,52 @@ if st.session_state.portfolio_submitted:
               </div>
             </div>""", unsafe_allow_html=True)
 
+            with st.expander(f"View Chart - {h['ticker']}"):
+                fig = build_plotly_chart(h["ticker"], t)
+                st.plotly_chart(fig, use_container_width=True)
+
     # ──── TRADE IDEAS TAB ────
     with tab_picks:
-        st.markdown(f'<div style="font-size:16px;font-weight:700;color:{WHITE};margin-bottom:10px;">Momentum Longs (1-3 Day)</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="font-size:16px;font-weight:700;color:{GREEN};margin-bottom:10px;font-family:monospace;">Momentum Longs (1-3 Day)</div>', unsafe_allow_html=True)
         for p in picks_m:
             st.markdown(pick_card(p), unsafe_allow_html=True)
-        st.markdown(f'<div style="font-size:16px;font-weight:700;color:{WHITE};margin:24px 0 10px;">Swing Trades (2-4 Week)</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="font-size:16px;font-weight:700;color:{GREEN};margin:24px 0 10px;font-family:monospace;">Swing Trades (2-4 Week)</div>', unsafe_allow_html=True)
         for p in picks_s:
             st.markdown(pick_card(p), unsafe_allow_html=True)
 
-    # ──── TECHNICALS TAB ────
+    # ──── TECHNICALS TAB (interactive charts) ────
     with tab_tech:
-        seen = set(); rows = []
-        for h in holdings:
-            tk = h["ticker"]; t = h["tech"]
-            if tk in seen: continue
-            seen.add(tk)
-            rows.append({
-                "Ticker": tk, "Price": f"${h['current_price']:,.2f}",
-                "RSI": f'{t.get("rsi","")}' if t.get("rsi") else "N/A",
-                "RSI Signal": t.get("rsi_label","N/A"), "MACD": t.get("macd_label","N/A"),
-                "Bollinger": t.get("bb_label","N/A"), "EMA": t.get("ema_label","N/A"),
-                "Volume": t.get("vol_label","N/A"),
-                "ATR Stop": f'${t["atr_stop"]:,.2f}' if t.get("atr_stop") else "N/A",
-                "ATR Target": f'${t["atr_target"]:,.2f}' if t.get("atr_target") else "N/A",
-            })
-        if rows:
-            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        ticker_options = [h["ticker"] for h in holdings]
+        if ticker_options:
+            selected_tk = st.selectbox("Select ticker to chart", ticker_options, key="tech_chart_select")
+            selected_h = next((h for h in holdings if h["ticker"] == selected_tk), None)
+            if selected_h:
+                fig = build_plotly_chart(selected_tk, selected_h["tech"])
+                st.plotly_chart(fig, use_container_width=True)
+
+                # Technical data table below chart
+                t = selected_h["tech"]
+                fins = selected_h.get("fins", {})
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.markdown(f"**RSI:** {t.get('rsi', 'N/A')} ({t.get('rsi_label', 'N/A')})")
+                    st.markdown(f"**StochRSI:** {t.get('stoch_rsi', 'N/A')} ({t.get('stoch_rsi_label', 'N/A')})")
+                    st.markdown(f"**MACD:** {t.get('macd_label', 'N/A')}")
+                with col2:
+                    st.markdown(f"**Bollinger:** {t.get('bb_label', 'N/A')}")
+                    st.markdown(f"**EMA Cross:** {t.get('ema_label', 'N/A')}")
+                    st.markdown(f"**Volume:** {t.get('vol_label', 'N/A')}")
+                with col3:
+                    st.markdown(f"**VWAP:** {dlr(t['vwap']) if t.get('vwap') else 'N/A'} ({t.get('vwap_label', 'N/A')})")
+                    st.markdown(f"**OBV Trend:** {t.get('obv_trend', 'N/A')}")
+                    st.markdown(f"**S/R:** {t.get('sr_label', 'N/A')} | Sup: {dlr(t['support']) if t.get('support') else 'N/A'} | Res: {dlr(t['resistance']) if t.get('resistance') else 'N/A'}")
+
+                if fins.get("peg") is not None:
+                    st.markdown(f"**PEG Ratio:** {fins['peg']:.2f} ({fins['peg_label']})")
+                if fins.get("z_score") is not None:
+                    st.markdown(f"**Altman Z-Score:** {fins['z_score']:.2f} ({fins['z_label']})")
+                if fins.get("est_revision") and fins["est_revision"] != "N/A":
+                    st.markdown(f"**EPS Estimate Revisions:** {fins['est_revision']}")
 
     # ──── RISK & NEWS TAB ────
     with tab_risk:
@@ -865,7 +1067,7 @@ if st.session_state.portfolio_submitted:
                 for k, v in sorted(risk_d["sectors"].items(), key=lambda x: -x[1])])
             st.dataframe(sdf, use_container_width=True, hide_index=True)
         st.divider()
-        st.markdown(f'<div style="font-size:16px;font-weight:700;color:{WHITE};margin-bottom:10px;">Macro & Political Risk</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="font-size:16px;font-weight:700;color:{GREEN};margin-bottom:10px;font-family:monospace;">Macro & Political Risk</div>', unsafe_allow_html=True)
         if macro["headlines"]:
             for h in macro["headlines"][:6]:
                 pub = f' -- {h["publisher"]}' if h["publisher"] else ""
