@@ -66,7 +66,6 @@ st.markdown(f"""
 <style>
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
-    header {{visibility: hidden;}}
 
     .stApp {{ background-color: {BG}; }}
     section[data-testid="stSidebar"] {{ background-color: {CARD}; }}
