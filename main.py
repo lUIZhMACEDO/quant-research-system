@@ -1,6 +1,6 @@
 """
-Local AI Stock Analyst  --  v3.0
-================================
+Local AI Stock Analyst  --  v3.1.0
+==================================
 Full-stack daily report: portfolio tracking, Smart Picks with strategy
 detection, technical indicators, financial metrics, earnings catalysts,
 macro/political risk, and a portfolio risk dashboard.
@@ -12,9 +12,11 @@ Schedule: Windows Task Scheduler -- Mon-Fri at 07:30.
 # =====================================================================
 #  IMPORTS
 # =====================================================================
+import json
 import os, sys, io, subprocess, smtplib, time, math
 import datetime
 from datetime import timedelta
+from pathlib import Path
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from difflib import SequenceMatcher
@@ -42,6 +44,11 @@ try:
     _HAS_FINVIZ = True
 except Exception:
     _HAS_FINVIZ = False
+
+try:
+    import streamlit as st
+except ImportError:
+    st = None
 
 # Windows encoding fix
 if sys.stdout and hasattr(sys.stdout, "encoding"):
@@ -86,6 +93,16 @@ PORTFOLIO_STRATEGIES = {
     "SCHD": "Dividend play. Reinvest distributions quarterly.",
     "EWY":  "Take 25% profit now; South Korea index is at 52W highs.",
 }
+
+ALERT_RULES = {
+    "OKLO":  {"price_move_pct": 3.0, "min_score_change": 3, "earnings_days": 2},
+    "VOO":   {"price_move_pct": 2.0, "min_score_change": 4, "earnings_days": 1},
+    "EWY":   {"price_move_pct": 3.0, "min_score_change": 3, "earnings_days": 2},
+    "SCHD":  {"price_move_pct": 2.5, "min_score_change": 4, "earnings_days": 2},
+    "_default": {"price_move_pct": 3.0, "min_score_change": 3, "earnings_days": 2},
+}
+SCORES_CACHE_FILE = Path(__file__).parent / "scores_cache.json"
+ALERTS_FILE = Path(__file__).parent / "alerts.json"
 
 # -- SMART PICKS --
 MOMENTUM_PICKS = [
@@ -175,29 +192,31 @@ SECTOR_ETF_MAP = {
 # =====================================================================
 #  2. CACHING & HELPERS
 # =====================================================================
-_info_cache: dict = {}
-_hist_cache: dict = {}
+def _get_info_impl(ticker: str) -> dict:
+    try:
+        return yf.Ticker(ticker).info or {}
+    except Exception:
+        return {}
 
+def _get_hist_impl(ticker: str, period: str, interval: str) -> pd.DataFrame:
+    try:
+        return yf.Ticker(ticker).history(period=period, interval=interval)
+    except Exception:
+        return pd.DataFrame()
 
-def get_info(ticker: str) -> dict:
-    """Cached yfinance .info -- never fetches the same ticker twice."""
-    if ticker not in _info_cache:
-        try:
-            _info_cache[ticker] = yf.Ticker(ticker).info or {}
-        except Exception:
-            _info_cache[ticker] = {}
-    return _info_cache[ticker]
+if st is not None:
+    @st.cache_data(ttl=60)
+    def get_info(ticker: str) -> dict:
+        return _get_info_impl(ticker)
 
-
-def get_hist(ticker: str, period: str = "30d", interval: str = "1d") -> pd.DataFrame:
-    """Cached yfinance .history."""
-    key = f"{ticker}|{period}|{interval}"
-    if key not in _hist_cache:
-        try:
-            _hist_cache[key] = yf.Ticker(ticker).history(period=period, interval=interval)
-        except Exception:
-            _hist_cache[key] = pd.DataFrame()
-    return _hist_cache[key]
+    @st.cache_data(ttl=60)
+    def get_hist(ticker: str, period: str = "30d", interval: str = "1d") -> pd.DataFrame:
+        return _get_hist_impl(ticker, period, interval)
+else:
+    def get_info(ticker: str) -> dict:
+        return _get_info_impl(ticker)
+    def get_hist(ticker: str, period: str = "30d", interval: str = "1d") -> pd.DataFrame:
+        return _get_hist_impl(ticker, period, interval)
 
 
 def fh_call(func_name: str, *args, **kwargs):
@@ -216,6 +235,56 @@ def fh_call(func_name: str, *args, **kwargs):
 
 def _similar(a: str, b: str, thresh: float = 0.80) -> bool:
     return SequenceMatcher(None, a.lower(), b.lower()).ratio() > thresh
+
+
+def get_crypto_prices(coins=None):
+    """CoinGecko free API — no key required. Returns price, 24h change, market cap."""
+    if coins is None:
+        coins = ["bitcoin", "ethereum", "solana", "binancecoin", "ripple"]
+    url = "https://api.coingecko.com/api/v3/simple/price"
+    params = {
+        "ids": ",".join(coins),
+        "vs_currencies": "usd",
+        "include_24hr_change": "true",
+        "include_market_cap": "true",
+        "include_24hr_vol": "true",
+    }
+    try:
+        r = requests.get(url, params=params, timeout=6)
+        return r.json()
+    except Exception:
+        return {}
+
+
+def get_fear_greed():
+    """Crypto Fear & Greed Index — free, no key required."""
+    try:
+        r = requests.get("https://api.alternative.me/fng/", timeout=5)
+        d = r.json()["data"][0]
+        return {"value": int(d["value"]), "label": d["value_classification"]}
+    except Exception:
+        return {"value": 50, "label": "Neutral"}
+
+
+def get_ai_strategy_note(ticker: str, signal: str, rsi: float, analyst_buy: int, analyst_sell: int) -> str:
+    """Generate a 1-sentence strategy note using Claude. Falls back to PORTFOLIO_STRATEGIES if API fails."""
+    try:
+        import anthropic as _anthropic
+        client = _anthropic.Anthropic()
+        prompt = (
+            f"Stock: {ticker}. Signal: {signal}. RSI: {rsi:.0f}. "
+            f"Analyst ratings: {analyst_buy} buy, {analyst_sell} sell. "
+            f"Write one concise sentence (max 20 words) of actionable strategy advice for this position. "
+            f"No disclaimers. Plain text only."
+        )
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=60,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return msg.content[0].text.strip()
+    except Exception:
+        return PORTFOLIO_STRATEGIES.get(ticker, "Monitor position and reassess on next earnings.")
 
 
 # =====================================================================
@@ -274,10 +343,13 @@ def compute_technicals(ticker: str) -> dict:
         elif cur < lower * 1.02: bb_lbl = "NEAR LOWER"
         else: bb_lbl = "MID RANGE"
 
-        # EMA 20 / 50
-        ema20 = EMAIndicator(close=close, window=20).ema_indicator().iloc[-1]
-        ema50 = EMAIndicator(close=close, window=min(50, len(close))).ema_indicator().iloc[-1]
-        ema_lbl = "GOLDEN CROSS" if ema20 > ema50 else "DEATH CROSS"
+        # EMA 20 / 50 (guard: need 50 bars for valid cross)
+        if len(close) >= 50:
+            ema20 = EMAIndicator(close=close, window=20).ema_indicator().iloc[-1]
+            ema50 = EMAIndicator(close=close, window=50).ema_indicator().iloc[-1]
+            ema_lbl = "GOLDEN CROSS" if ema20 > ema50 else "DEATH CROSS"
+        else:
+            ema_lbl = "N/A"
 
         # ATR
         atr_obj = AverageTrueRange(high=df["High"], low=df["Low"], close=close, window=14)
@@ -1321,7 +1393,7 @@ def _relative_strength_html(h: dict) -> str:
     c = C_GREEN if out else C_RED
     arrow = "+" if out else ""
     return (f'<div style="margin-top:4px;font-size:10px;color:{c};font-weight:600;">'
-            f'vs Sector: {arrow}{val:.1f}% {"📈" if out else "📉"}</div>')
+            f'vs Sector: {arrow}{val:.1f}% {"UP" if out else "DOWN"}</div>')
 
 
 def get_premarket_movers(portfolio: list[dict], watchlist: list[str]) -> list[dict]:
@@ -1779,6 +1851,85 @@ def main():
     portfolio = analyse_portfolio(MY_PORTFOLIO)
     risk_d = compute_risk_dashboard(portfolio)
     print(f"  [OK] Beta: {risk_d['weighted_beta']:.2f}  Risk: {risk_d['risk_rating']}  VaR: ${risk_d['var_95']:,.2f}")
+
+    # ── Alert detection ───────────────────────────────────────────────────
+    def _load_scores_cache() -> dict:
+        try:
+            return json.loads(SCORES_CACHE_FILE.read_text()) if SCORES_CACHE_FILE.exists() else {}
+        except Exception:
+            return {}
+
+    def _save_scores_cache(results: list):
+        cache = {r["ticker"]: r.get("score", 0) for r in results}
+        SCORES_CACHE_FILE.write_text(json.dumps(cache, indent=2))
+
+    def check_alerts(results: list) -> list:
+        prev = _load_scores_cache()
+        alerts = []
+        for r in results:
+            ticker = r["ticker"]
+            rules = ALERT_RULES.get(ticker, ALERT_RULES["_default"])
+            chg = abs(r.get("day_pnl_pct", 0))
+            # Price move
+            if chg >= rules["price_move_pct"]:
+                direction = "UP" if r.get("day_pnl_pct", 0) > 0 else "DOWN"
+                alerts.append({
+                    "ticker": ticker, "type": "PRICE_MOVE", "severity": "HIGH",
+                    "message": f"{ticker} is {direction} {chg:.1f}% today",
+                    "time": datetime.datetime.now().strftime("%I:%M %p"),
+                })
+            # Signal score change
+            curr_score = r.get("score", 0)
+            prev_score = prev.get(ticker, curr_score)
+            if abs(curr_score - prev_score) >= rules["min_score_change"]:
+                alerts.append({
+                    "ticker": ticker, "type": "SIGNAL_CHANGE", "severity": "HIGH",
+                    "message": f"{ticker} signal score: {prev_score:+.1f} → {curr_score:+.1f} ({r.get('signal','?')})",
+                    "time": datetime.datetime.now().strftime("%I:%M %p"),
+                })
+            # Earnings
+            earn = r.get("earn", {})
+            days = earn.get("days_to_earnings") if isinstance(earn, dict) else None
+            if days is not None and 0 <= days <= rules["earnings_days"]:
+                alerts.append({
+                    "ticker": ticker, "type": "EARNINGS", "severity": "HIGH",
+                    "message": f"{ticker} earnings in {days} day(s)",
+                    "time": datetime.datetime.now().strftime("%I:%M %p"),
+                })
+        return alerts
+
+    portfolio_alerts = check_alerts(portfolio)
+    _save_scores_cache(portfolio)
+    ALERTS_FILE.write_text(json.dumps(portfolio_alerts, indent=2))
+
+    # Send short alert email if any HIGH alerts exist
+    high_alerts = [a for a in portfolio_alerts if a["severity"] == "HIGH"]
+    if high_alerts:
+        alert_body = "\n".join(f"• {a['message']}" for a in high_alerts)
+        alert_subject = f"Stock Alert — {', '.join(set(a['ticker'] for a in high_alerts))}"
+        try:
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = alert_subject
+            msg["From"] = SENDER_EMAIL
+            msg["To"] = RECIPIENT_EMAIL
+            msg.attach(MIMEText(alert_body, "plain"))
+            with smtplib.SMTP("smtp.gmail.com", 587) as srv:
+                srv.starttls()
+                srv.login(SENDER_EMAIL, EMAIL_PASSWORD)
+                srv.sendmail(SENDER_EMAIL, RECIPIENT_EMAIL, msg.as_string())
+            print(f"  [OK] Alert email sent ({len(high_alerts)} alerts).")
+        except Exception as e:
+            print(f"  [WARN] Alert email failed: {e}")
+        # Push to mobile app via api.py if running
+        for alert in high_alerts:
+            try:
+                requests.post("http://localhost:8000/push-alert", json={
+                    "ticker": alert["ticker"],
+                    "message": alert["message"],
+                }, timeout=3)
+            except Exception:
+                pass
+    # ─────────────────────────────────────────────────────────────────────
 
     print("[5/7] Enriching smart picks...")
     picks_m = enrich_picks(MOMENTUM_PICKS)

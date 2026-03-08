@@ -1,4 +1,5 @@
 streamlit>=1.41.0
+streamlit-autorefresh
 pandas
 yfinance
 requests
@@ -10,5 +11,10 @@ finnhub-python
 beautifulsoup4
 numpy
 feedparser
-anthropic
 plotly
+pytz
+anthropic
+pyfinviz
+fastapi
+uvicorn
+httpx
