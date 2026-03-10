@@ -1,4 +1,4 @@
-# AI Stock Analyst
+# Stock Analyst
 
 Two Streamlit deployments from the same repo — one public, one personal.
 
@@ -21,13 +21,13 @@ git push origin public
 ### 2. Create two apps on [share.streamlit.io](https://share.streamlit.io)
 
 **App 1 — Public (for visitors)**  
-- Repo: your `ai-stock-analyst`  
+- Repo: your `stock-analyst`  
 - Branch: **public**  
 - Main file: `app.py`  
 - Secrets: `FINNHUB_API_KEY`, `ANTHROPIC_API_KEY`, `SENDER_EMAIL`, `EMAIL_PASSWORD` (optional)
 
 **App 2 — Personal (for you)**  
-- Repo: same `ai-stock-analyst`  
+- Repo: same `stock-analyst`  
 - Branch: **master**  
 - Main file: `app.py`  
 - Secrets: same as above, **plus** `PUBLIC_MODE` = `0` (to show My Portfolio)
