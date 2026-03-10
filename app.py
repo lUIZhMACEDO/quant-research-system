@@ -1,5 +1,5 @@
 """
-AI Stock Analyst  --  Public Streamlit Dashboard
+Stock Analyst  --  Public Streamlit Dashboard
 =================================================
 Version: 3.1.0
 Anyone can enter their stocks, shares, avg cost, and email.
@@ -812,7 +812,7 @@ def send_user_email(recipient: str, holdings: list[dict], risk_d: dict,
     text += f"Risk: Beta {risk_d['weighted_beta']:.2f} | VaR ${risk_d['var_95']:,.2f} | {risk_d['risk_rating']}\n"
 
     msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"AI Stock Report -- {datetime.date.today()}"
+    msg["Subject"] = f"Stock Report -- {datetime.date.today()}"
     msg["From"] = sender
     msg["To"] = recipient
     msg.attach(MIMEText(text, "plain"))
