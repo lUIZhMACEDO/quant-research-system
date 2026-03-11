@@ -46,13 +46,40 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# --- MOVING STARFIELD BACKGROUND CSS (Streamlit .stApp override) ---
+starfield_css = """
+<style>
+.stApp {
+    background-color: #000000 !important;
+    background-image:
+        radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 4px),
+        radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 3px),
+        radial-gradient(white, rgba(255,255,255,.1) 2px, transparent 4px) !important;
+    background-size: 550px 550px, 350px 350px, 250px 250px !important;
+    background-position: 0 0, 40px 60px, 130px 270px !important;
+    animation: star-movement 100s linear infinite !important;
+}
+
+@keyframes star-movement {
+    0% { background-position: 0 0, 40px 60px, 130px 270px; }
+    100% { background-position: -550px 550px, -310px 410px, 120px 520px; }
+}
+
+header[data-testid="stHeader"] {
+    background-color: transparent !important;
+}
+</style>
+"""
+
+st.markdown(starfield_css, unsafe_allow_html=True)
+
 # ═════════════════════════════════════════════════════════════════
 #  PALETTE
 # ═════════════════════════════════════════════════════════════════
-BG     = "#0b0e11"
-CARD   = "#141821"
-ALT    = "#1a1f2b"
-BORDER = "#1e2533"
+BG     = "#000000"
+CARD   = "#0d1117"
+ALT    = "#111827"
+BORDER = "#1a2235"
 TEXT   = "#d1d4dc"
 DIM    = "#6b7280"
 GREEN  = "#00d26a"
@@ -64,35 +91,37 @@ PURPLE = "#a78bfa"
 CYAN   = "#22d3ee"
 
 # ═════════════════════════════════════════════════════════════════
-#  CSS
+#  CSS (UI layout)
 # ═════════════════════════════════════════════════════════════════
 st.markdown(f"""
 <style>
-    .stApp {{ background-color: {BG}; }}
     html, body, [class*="css"] {{ font-size: 16px; }}
     section[data-testid="stSidebar"] {{ background-color: {CARD}; }}
     section[data-testid="stSidebar"] * {{ font-size: 15px !important; }}
-    .block-container {{ padding-top: 0.5rem; }}
+    .block-container {{
+        padding-top: 0.5rem;
+        background: transparent !important;
+    }}
     .stTabs [data-baseweb="tab-list"] {{
-        gap: 4px; background-color: {CARD}; border-radius: 8px; padding: 4px;
+        gap: 6px; background-color: {CARD}; border-radius: 10px; padding: 5px;
     }}
     .stTabs [data-baseweb="tab"] {{
-        border-radius: 6px; color: {DIM}; font-weight: 700;
-        font-size: 15px !important; padding: 10px 20px !important;
+        border-radius: 8px; color: {DIM}; font-weight: 700;
+        font-size: 16px !important; padding: 12px 24px !important;
     }}
     .stTabs [aria-selected="true"] {{
         background-color: {ALT} !important; color: {WHITE} !important;
     }}
-    [data-testid="stMetricLabel"] {{ font-size: 14px !important; color: {DIM}; font-weight: 600; }}
-    [data-testid="stMetricValue"] {{ font-size: 1.7rem !important; font-weight: 800; color: {WHITE}; }}
-    [data-testid="stMetricDelta"] {{ font-size: 1rem !important; }}
+    [data-testid="stMetricLabel"] {{ font-size: 15px !important; color: {DIM}; font-weight: 700; }}
+    [data-testid="stMetricValue"] {{ font-size: 2.2rem !important; font-weight: 900; color: {WHITE}; }}
+    [data-testid="stMetricDelta"] {{ font-size: 1.1rem !important; }}
     .stock-card {{
         background: {CARD}; border: 1px solid {BORDER};
-        border-radius: 12px; padding: 22px 26px; margin-bottom: 16px;
+        border-radius: 14px; padding: 26px 30px; margin-bottom: 20px;
     }}
     .badge {{
-        display: inline-block; padding: 5px 16px; border-radius: 6px;
-        font-weight: 800; font-size: 14px; letter-spacing: 0.5px;
+        display: inline-block; padding: 6px 18px; border-radius: 7px;
+        font-weight: 900; font-size: 15px; letter-spacing: 0.5px;
     }}
     .badge-buy   {{ background: {GREEN}22; color: {GREEN}; border: 1px solid {GREEN}44; }}
     .badge-sell  {{ background: {RED}22;   color: {RED};   border: 1px solid {RED}44; }}
@@ -100,61 +129,64 @@ st.markdown(f"""
     .badge-trim  {{ background: {AMBER}22; color: {AMBER}; border: 1px solid {AMBER}44; }}
     .badge-watch {{ background: {AMBER}22; color: {AMBER}; border: 1px solid {AMBER}44; }}
     .kpi-label {{
-        font-size: 11px; color: {DIM}; text-transform: uppercase;
-        letter-spacing: 1px; margin-bottom: 3px; font-weight: 600;
+        font-size: 12px; color: {DIM}; text-transform: uppercase;
+        letter-spacing: 1.2px; margin-bottom: 4px; font-weight: 700;
     }}
-    .kpi-value {{ font-size: 18px; font-weight: 800; line-height: 1.2; }}
+    .kpi-value {{ font-size: 20px; font-weight: 900; line-height: 1.2; }}
     .card-info {{
-        font-size: 14px !important; color: {TEXT}; line-height: 1.8;
-        padding: 12px 16px; background: {ALT}; border-radius: 8px; margin-top: 10px;
+        font-size: 15px !important; color: {TEXT}; line-height: 1.9;
+        padding: 14px 18px; background: {ALT}; border-radius: 10px; margin-top: 12px;
     }}
     .card-timeline {{
-        font-size: 14px !important; color: {TEXT}; line-height: 1.8;
-        padding: 12px 16px; background: {ALT}; border-radius: 8px; margin-top: 10px;
+        font-size: 15px !important; color: {TEXT}; line-height: 1.9;
+        padding: 14px 18px; background: {ALT}; border-radius: 10px; margin-top: 12px;
     }}
     .timeline-label {{
-        color: {CYAN}; font-weight: 700; font-size: 14px !important;
-        margin-top: 6px; margin-bottom: 2px;
+        color: {CYAN}; font-weight: 800; font-size: 15px !important;
+        margin-top: 8px; margin-bottom: 3px;
     }}
-    .card-reason {{ font-size: 14px; color: {DIM}; font-style: italic; margin-top: 6px; }}
-    .card-action {{ font-size: 15px; color: {AMBER}; font-weight: 700; margin-top: 6px; }}
-    .card-ticker {{ font-size: 22px; font-weight: 900; color: {WHITE}; }}
-    .card-name   {{ font-size: 14px; color: {DIM}; margin-left: 10px; }}
+    .card-reason {{ font-size: 15px; color: {DIM}; font-style: italic; margin-top: 8px; }}
+    .card-action {{ font-size: 16px; color: {AMBER}; font-weight: 800; margin-top: 8px; }}
+    .card-ticker {{ font-size: 26px; font-weight: 900; color: {WHITE}; }}
+    .card-name   {{ font-size: 15px; color: {DIM}; margin-left: 12px; }}
     .news-item {{
-        padding: 10px 0; border-bottom: 1px solid {BORDER};
-        font-size: 14px; color: {TEXT}; line-height: 1.6;
+        padding: 12px 0; border-bottom: 1px solid {BORDER};
+        font-size: 15px; color: {TEXT}; line-height: 1.7;
     }}
-    .dataframe td, .dataframe th {{ font-size: 14px !important; padding: 10px 14px !important; }}
+    .dataframe td, .dataframe th {{ font-size: 15px !important; padding: 12px 16px !important; }}
     .stTextInput > div > div > input,
-    .stNumberInput > div > div > input {{ font-size: 15px !important; padding: 10px 12px !important;
+    .stNumberInput > div > div > input {{ font-size: 16px !important; padding: 12px 14px !important;
         min-width: 80px; overflow: visible; }}
     .stNumberInput > div {{ overflow: visible !important; }}
     section[data-testid="stSidebar"] .stNumberInput input {{ min-width: 70px !important; }}
     section[data-testid="stSidebar"] .stNumberInput {{ margin-bottom: 1rem !important; }}
-    /* Hide "Press Enter to apply" on number inputs */
     .stNumberInput [data-testid="stCaptionContainer"] {{ display: none !important; }}
-    label[data-testid="stWidgetLabel"] p {{ font-size: 15px !important; font-weight: 600; }}
+    label[data-testid="stWidgetLabel"] p {{ font-size: 16px !important; font-weight: 700; }}
     .stButton > button, .stFormSubmitButton > button {{
-        font-size: 16px !important; font-weight: 700 !important;
-        padding: 12px 28px !important; border-radius: 8px !important;
+        font-size: 17px !important; font-weight: 800 !important;
+        padding: 14px 32px !important; border-radius: 10px !important;
         white-space: nowrap !important; min-width: 120px !important;
     }}
     section[data-testid="stSidebar"] .stButton > button {{
         min-width: 100% !important; width: 100% !important;
     }}
     .hero-title {{
-        font-size: 38px; font-weight: 900; color: {WHITE};
+        font-size: 44px; font-weight: 900; color: {WHITE};
         letter-spacing: -0.5px; line-height: 1.2;
     }}
     .hero-sub {{
-        font-size: 17px; color: {DIM}; margin-top: 10px; line-height: 1.6;
+        font-size: 19px; color: {DIM}; margin-top: 12px; line-height: 1.7;
+    }}
+    .regime-banner {{
+        border-radius: 10px; padding: 14px 20px; margin-bottom: 14px;
+        font-size: 15px; font-weight: 700; letter-spacing: 0.3px;
     }}
     @keyframes live-pulse {{ 0%,100%{{opacity:1}} 50%{{opacity:0.3}} }}
     .live-dot {{
-        display:inline-block; width:9px; height:9px; border-radius:50%;
-        background:{AMBER}; box-shadow:0 0 8px {AMBER};
+        display:inline-block; width:10px; height:10px; border-radius:50%;
+        background:{AMBER}; box-shadow:0 0 10px {AMBER};
         animation:live-pulse 1.5s ease-in-out infinite;
-        margin-right:6px; vertical-align:middle;
+        margin-right:8px; vertical-align:middle;
     }}
     @keyframes ticker-scroll {{ 0%{{transform:translateX(0)}} 100%{{transform:translateX(-33.333%)}} }}
     #MainMenu {{ visibility: hidden; }}
