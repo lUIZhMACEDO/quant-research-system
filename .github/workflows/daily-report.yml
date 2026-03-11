@@ -2,8 +2,10 @@ name: Daily Stock Report
 
 on:
   schedule:
-    # Mon-Fri at 13:30 UTC = 8:30 AM EST (12:30 UTC = 8:30 AM EDT in summer)
-    - cron: "30 13 * * 1-5"
+    # Mon-Fri. GitHub Actions cron is UTC:
+    # - 13:30 UTC = 8:30 AM EST (winter)
+    # - 12:30 UTC = 8:30 AM EDT (summer)
+    - cron: "30 12 * * 1-5"
   workflow_dispatch: # allows manual trigger from GitHub
 
 jobs:
