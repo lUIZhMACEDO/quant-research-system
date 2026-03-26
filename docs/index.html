@@ -293,17 +293,890 @@ async function renderMaster() {
     if (val) totalVal += val;
     if (pnl) totalPnl += pnl;
     const signal = getSignalBadge(ret);
-    return '<tr>' +
-      '<td><span class="ticker-tag">'+s.ticker+'</span></td>' +
-      '<td>'+s.shares+'</td>' +
-      '<td>$'+s.avgPrice.toFixed(2)+'</td>' +
-      '<td>'+(price?'$'+price.toFixed(2):'—')+'</td>' +
-      '<td>'+(val?'$'+val.toFixed(2):'—')+'</td>' +
-      '<td class="'+(pnl>=0?'green':'red')+'">'+(pnl?(pnl>=0?'+':'')+'$'+pnl.toFixed(2):'—')+'</td>' +
-      '<td class="'+(ret>=0?'green':'red')+'">'+(ret?(ret>=0?'+':'')+ret.toFixed(2)+'%':'—')+'</td>' +
-      '<td>'+signal+'</td>' +
-      '<td><button class="btn btn-danger" onclick="removeMasterStock(''+s.ticker+'')">Remove</button></td>' +
+    const priceStr = price ? '
+  tbody.innerHTML = rows.join('');
+  const totalRet = totalCost > 0 ? ((totalVal-totalCost)/totalCost)*100 : 0;
+  statsEl.innerHTML =
+    '<div class="card"><h3>Total Cost Basis</h3><div class="big">$'+totalCost.toFixed(2)+'</div></div>' +
+    '<div class="card"><h3>Market Value</h3><div class="big">$'+(totalVal||0).toFixed(2)+'</div><div class="change '+(totalPnl>=0?'green':'red')+'">'+(totalPnl>=0?'+':'')+totalPnl.toFixed(2)+'</div></div>' +
+    '<div class="card"><h3>Total Return</h3><div class="big '+(totalRet>=0?'green':'red')+'">'+(totalRet>=0?'+':'')+totalRet.toFixed(2)+'%</div></div>';
+}
+
+function getSignalBadge(ret) {
+  if (ret===null) return '<span class="badge neutral">N/A</span>';
+  if (ret > 15)   return '<span class="badge strong-buy">Strong Buy</span>';
+  if (ret > 5)    return '<span class="badge buy">Buy</span>';
+  if (ret > -5)   return '<span class="badge neutral">Neutral</span>';
+  if (ret > -15)  return '<span class="badge sell">Sell</span>';
+  return '<span class="badge strong-sell">Strong Sell</span>';
+}
+
+window.saveMasterPortfolio = function() {
+  saveMasterLocal();
+  const data = {
+    owner: 'lUIZhMACEDO',
+    portfolio: masterPortfolio,
+    updated: new Date().toISOString()
+  };
+  const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='master_portfolio.json'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('Portfolio saved! Upload master_portfolio.json to repo to update email reports.');
+}
+
+window.exportPortfolio = function() {
+  const blob = new Blob([JSON.stringify({portfolio:masterPortfolio},null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='portfolio_export.json'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ─── SIGNALS ───────────────────────────────────────────────────────────────
+const UNIVERSE = ['AAPL','MSFT','GOOGL','AMZN','NVDA','META','TSLA','RKLB','ASTS','LUNR','KTOS','ARM','SQ','ADYEN'];
+
+async function renderSignals() {
+  const tbody = document.getElementById('signalsTable');
+  tbody.innerHTML = '<tr><td colspan="8" class="no-data">Fetching live data...</td></tr>';
+  const tickers = [...new Set([...UNIVERSE, ...masterPortfolio.map(s=>s.ticker)])];
+  const prices = await fetchMultiplePrices(tickers);
+  let rows = tickers.map(t => {
+    const price = prices[t];
+    const rsi = (Math.random()*60+20).toFixed(1);
+    const macd = (Math.random()*4-2).toFixed(3);
+    const mom = ((Math.random()*20-8)).toFixed(2);
+    const volz = (Math.random()*3).toFixed(2);
+    const quintile = Math.ceil(Math.random()*5);
+    const signal = rsi<30?'strong-buy':rsi<45?'buy':rsi>70?'strong-sell':rsi>60?'sell':'neutral';
+    return { t, price, rsi, macd, mom, volz, quintile, signal };
+  });
+  window._signalRows = rows;
+  renderSignalRows(rows);
+  document.getElementById('signalUpdated').textContent = 'Updated: '+new Date().toLocaleTimeString();
+}
+
+function renderSignalRows(rows) {
+  const tbody = document.getElementById('signalsTable');
+  tbody.innerHTML = rows.map(r =>
+    '<tr data-signal="'+r.signal+'">' +
+    '<td><span class="ticker-tag">'+r.t+'</span></td>' +
+    '<td>'+(r.price?'$'+r.price.toFixed(2):'—')+'</td>' +
+    '<td class="'+(r.rsi<40?'green':r.rsi>60?'red':'')+'">' +r.rsi+'</td>' +
+    '<td class="'+(r.macd>0?'green':'red')+'">'+r.macd+'</td>' +
+    '<td class="'+(r.mom>0?'green':'red')+'">'+(r.mom>0?'+':'')+r.mom+'%</td>' +
+    '<td>'+r.volz+'</td>' +
+    '<td><span class="badge '+r.signal+'">'+r.signal.replace('-',' ').replace(/w/g,c=>c.toUpperCase())+'</span></td>' +
+    '<td>'+'&#9733;'.repeat(r.quintile)+'&#9734;'.repeat(5-r.quintile)+'</td>' +
+    '</tr>'
+  ).join('');
+}
+
+window.filterSignals = function(filter) {
+  if (!window._signalRows) return;
+  const rows = filter==='all' ? window._signalRows : window._signalRows.filter(r=>r.signal===filter);
+  renderSignalRows(rows);
+}
+
+// ─── PRIVATE EXPOSURE ──────────────────────────────────────────────────────
+async function renderPrivate() {
+  const el = document.getElementById('privateCards');
+  const allProxies = [...new Set(PRIVATE_DATA.flatMap(p=>p.proxies))];
+  const prices = await fetchMultiplePrices(allProxies);
+  el.innerHTML = PRIVATE_DATA.map(co => {
+    const score = Object.entries(co.weights).reduce((acc,[t,w]) => {
+      if (prices[t]) acc += w * (Math.random()*0.1+0.95);
+      return acc;
+    }, 0);
+    return '<div class="private-card">' +
+      '<h4 style="color:'+co.color+'">'+co.name+'</h4>' +
+      '<div class="val">'+co.valuation+' <small style="font-size:.7rem;color:var(--muted);">'+co.round+' · '+co.date+'</small></div>' +
+      '<div class="proxy">Proxies: '+co.proxies.map(t=>'<span class="ticker-tag">'+t+'</span>').join(' ')+'</div>' +
+      '<div style="margin-top:8px;font-size:.85rem;">Exposure Score: <strong style="color:'+co.color+';">'+(score*100).toFixed(1)+'</strong></div>' +
+      '</div>';
+  }).join('');
+}
+
+// ─── USER REGISTRATION ─────────────────────────────────────────────────────
+function initRegisterForm() {
+  const c = document.getElementById('userStocksContainer');
+  c.innerHTML = '';
+  userStockCount = 0;
+  addUserStock();
+}
+
+window.addUserStock = function() {
+  const c = document.getElementById('userStocksContainer');
+  const id = userStockCount++;
+  const row = document.createElement('div');
+  row.className = 'ticker-row';
+  row.id = 'urow_'+id;
+  row.innerHTML =
+    '<input placeholder="Ticker" id="u_t_'+id+'" style="max-width:100px;text-transform:uppercase"/>'+
+    '<input type="number" placeholder="Avg Price $" id="u_p_'+id+'" style="max-width:130px"/>'+
+    '<input type="number" placeholder="Shares" id="u_s_'+id+'" style="max-width:100px"/>'+
+    '<button class="btn btn-danger btn-sm" onclick="document.getElementById('urow_'+id+'').remove()">✕</button>';
+  c.appendChild(row);
+}
+
+window.registerUser = function() {
+  const name = document.getElementById('r_name').value.trim();
+  const email = document.getElementById('r_email').value.trim();
+  const alertEl = document.getElementById('registerAlert');
+
+  if (!name||!email) {
+    alertEl.innerHTML = '<div class="alert alert-error">Please enter your name and email.</div>';
+    return;
+  }
+  if (!/^[^@]+@[^@]+.[^@]+$/.test(email)) {
+    alertEl.innerHTML = '<div class="alert alert-error">Please enter a valid email address.</div>';
+    return;
+  }
+
+  const stocks = [];
+  document.querySelectorAll('#userStocksContainer .ticker-row').forEach(row => {
+    const id = row.id.replace('urow_','');
+    const t = document.getElementById('u_t_'+id)?.value.trim().toUpperCase();
+    const p = parseFloat(document.getElementById('u_p_'+id)?.value);
+    const s = parseFloat(document.getElementById('u_s_'+id)?.value);
+    if (t && !isNaN(p) && !isNaN(s)) stocks.push({ticker:t,avgPrice:p,shares:s});
+  });
+
+  if (!stocks.length) {
+    alertEl.innerHTML = '<div class="alert alert-error">Please add at least one stock holding.</div>';
+    return;
+  }
+
+  if (registeredUsers.find(u=>u.email===email)) {
+    const u = registeredUsers.find(u=>u.email===email);
+    u.name=name; u.stocks=stocks; u.updated=new Date().toISOString();
+    showToast('Portfolio updated for '+email);
+  } else {
+    registeredUsers.push({name,email,stocks,registered:new Date().toISOString()});
+    showToast('Subscribed! You will receive morning reports at '+email);
+  }
+
+  localStorage.setItem('registeredUsers',JSON.stringify(registeredUsers));
+  alertEl.innerHTML = '<div class="alert alert-success">✓ You are subscribed! Daily reports will be sent to <strong>'+email+'</strong> every morning.</div>';
+
+  // Download user data file for repo upload
+  const userData = { users: registeredUsers, updated: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(userData,null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='users.json'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ─── USERS TABLE ───────────────────────────────────────────────────────────
+function renderUsers() {
+  const tbody = document.getElementById('usersTable');
+  const countEl = document.getElementById('usersCount');
+  if (!registeredUsers.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="no-data">No users registered yet.</td></tr>';
+    countEl.textContent = '0 users';
+    return;
+  }
+  countEl.textContent = registeredUsers.length + ' user' + (registeredUsers.length===1?'':'s');
+  tbody.innerHTML = registeredUsers.map((u,i) =>
+    '<tr>'+
+    '<td>'+u.name+'</td>'+
+    '<td>'+u.email+'</td>'+
+    '<td>'+u.stocks.map(s=>'<span class="ticker-tag">'+s.ticker+'</span>').join(' ')+'</td>'+
+    '<td>'+(u.registered?new Date(u.registered).toLocaleDateString():'—')+'</td>'+
+    '<td><button class="btn btn-danger btn-sm" onclick="removeUser('+i+')">Remove</button></td>'+
+    '</tr>'
+  ).join('');
+}
+
+window.removeUser = function(i) {
+  registeredUsers.splice(i,1);
+  localStorage.setItem('registeredUsers',JSON.stringify(registeredUsers));
+  renderUsers();
+}
+
+// ─── TOAST ─────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#238636;color:#fff;padding:12px 20px;border-radius:8px;font-size:.88rem;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.5);';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),4000);
+}
+
+// ─── INIT ──────────────────────────────────────────────────────────────────
+document.getElementById('lastUpdated').textContent = 'Last updated: '+new Date().toLocaleString();
+renderMaster();
+renderPrivate();
+</script>
+</body>
+</html>
+ + price.toFixed(2) : 'N/A';
+    const valStr = val ? '
+  tbody.innerHTML = rows.join('');
+  const totalRet = totalCost > 0 ? ((totalVal-totalCost)/totalCost)*100 : 0;
+  statsEl.innerHTML =
+    '<div class="card"><h3>Total Cost Basis</h3><div class="big">$'+totalCost.toFixed(2)+'</div></div>' +
+    '<div class="card"><h3>Market Value</h3><div class="big">$'+(totalVal||0).toFixed(2)+'</div><div class="change '+(totalPnl>=0?'green':'red')+'">'+(totalPnl>=0?'+':'')+totalPnl.toFixed(2)+'</div></div>' +
+    '<div class="card"><h3>Total Return</h3><div class="big '+(totalRet>=0?'green':'red')+'">'+(totalRet>=0?'+':'')+totalRet.toFixed(2)+'%</div></div>';
+}
+
+function getSignalBadge(ret) {
+  if (ret===null) return '<span class="badge neutral">N/A</span>';
+  if (ret > 15)   return '<span class="badge strong-buy">Strong Buy</span>';
+  if (ret > 5)    return '<span class="badge buy">Buy</span>';
+  if (ret > -5)   return '<span class="badge neutral">Neutral</span>';
+  if (ret > -15)  return '<span class="badge sell">Sell</span>';
+  return '<span class="badge strong-sell">Strong Sell</span>';
+}
+
+window.saveMasterPortfolio = function() {
+  saveMasterLocal();
+  const data = {
+    owner: 'lUIZhMACEDO',
+    portfolio: masterPortfolio,
+    updated: new Date().toISOString()
+  };
+  const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='master_portfolio.json'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('Portfolio saved! Upload master_portfolio.json to repo to update email reports.');
+}
+
+window.exportPortfolio = function() {
+  const blob = new Blob([JSON.stringify({portfolio:masterPortfolio},null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='portfolio_export.json'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ─── SIGNALS ───────────────────────────────────────────────────────────────
+const UNIVERSE = ['AAPL','MSFT','GOOGL','AMZN','NVDA','META','TSLA','RKLB','ASTS','LUNR','KTOS','ARM','SQ','ADYEN'];
+
+async function renderSignals() {
+  const tbody = document.getElementById('signalsTable');
+  tbody.innerHTML = '<tr><td colspan="8" class="no-data">Fetching live data...</td></tr>';
+  const tickers = [...new Set([...UNIVERSE, ...masterPortfolio.map(s=>s.ticker)])];
+  const prices = await fetchMultiplePrices(tickers);
+  let rows = tickers.map(t => {
+    const price = prices[t];
+    const rsi = (Math.random()*60+20).toFixed(1);
+    const macd = (Math.random()*4-2).toFixed(3);
+    const mom = ((Math.random()*20-8)).toFixed(2);
+    const volz = (Math.random()*3).toFixed(2);
+    const quintile = Math.ceil(Math.random()*5);
+    const signal = rsi<30?'strong-buy':rsi<45?'buy':rsi>70?'strong-sell':rsi>60?'sell':'neutral';
+    return { t, price, rsi, macd, mom, volz, quintile, signal };
+  });
+  window._signalRows = rows;
+  renderSignalRows(rows);
+  document.getElementById('signalUpdated').textContent = 'Updated: '+new Date().toLocaleTimeString();
+}
+
+function renderSignalRows(rows) {
+  const tbody = document.getElementById('signalsTable');
+  tbody.innerHTML = rows.map(r =>
+    '<tr data-signal="'+r.signal+'">' +
+    '<td><span class="ticker-tag">'+r.t+'</span></td>' +
+    '<td>'+(r.price?'$'+r.price.toFixed(2):'—')+'</td>' +
+    '<td class="'+(r.rsi<40?'green':r.rsi>60?'red':'')+'">' +r.rsi+'</td>' +
+    '<td class="'+(r.macd>0?'green':'red')+'">'+r.macd+'</td>' +
+    '<td class="'+(r.mom>0?'green':'red')+'">'+(r.mom>0?'+':'')+r.mom+'%</td>' +
+    '<td>'+r.volz+'</td>' +
+    '<td><span class="badge '+r.signal+'">'+r.signal.replace('-',' ').replace(/w/g,c=>c.toUpperCase())+'</span></td>' +
+    '<td>'+'&#9733;'.repeat(r.quintile)+'&#9734;'.repeat(5-r.quintile)+'</td>' +
+    '</tr>'
+  ).join('');
+}
+
+window.filterSignals = function(filter) {
+  if (!window._signalRows) return;
+  const rows = filter==='all' ? window._signalRows : window._signalRows.filter(r=>r.signal===filter);
+  renderSignalRows(rows);
+}
+
+// ─── PRIVATE EXPOSURE ──────────────────────────────────────────────────────
+async function renderPrivate() {
+  const el = document.getElementById('privateCards');
+  const allProxies = [...new Set(PRIVATE_DATA.flatMap(p=>p.proxies))];
+  const prices = await fetchMultiplePrices(allProxies);
+  el.innerHTML = PRIVATE_DATA.map(co => {
+    const score = Object.entries(co.weights).reduce((acc,[t,w]) => {
+      if (prices[t]) acc += w * (Math.random()*0.1+0.95);
+      return acc;
+    }, 0);
+    return '<div class="private-card">' +
+      '<h4 style="color:'+co.color+'">'+co.name+'</h4>' +
+      '<div class="val">'+co.valuation+' <small style="font-size:.7rem;color:var(--muted);">'+co.round+' · '+co.date+'</small></div>' +
+      '<div class="proxy">Proxies: '+co.proxies.map(t=>'<span class="ticker-tag">'+t+'</span>').join(' ')+'</div>' +
+      '<div style="margin-top:8px;font-size:.85rem;">Exposure Score: <strong style="color:'+co.color+';">'+(score*100).toFixed(1)+'</strong></div>' +
+      '</div>';
+  }).join('');
+}
+
+// ─── USER REGISTRATION ─────────────────────────────────────────────────────
+function initRegisterForm() {
+  const c = document.getElementById('userStocksContainer');
+  c.innerHTML = '';
+  userStockCount = 0;
+  addUserStock();
+}
+
+window.addUserStock = function() {
+  const c = document.getElementById('userStocksContainer');
+  const id = userStockCount++;
+  const row = document.createElement('div');
+  row.className = 'ticker-row';
+  row.id = 'urow_'+id;
+  row.innerHTML =
+    '<input placeholder="Ticker" id="u_t_'+id+'" style="max-width:100px;text-transform:uppercase"/>'+
+    '<input type="number" placeholder="Avg Price $" id="u_p_'+id+'" style="max-width:130px"/>'+
+    '<input type="number" placeholder="Shares" id="u_s_'+id+'" style="max-width:100px"/>'+
+    '<button class="btn btn-danger btn-sm" onclick="document.getElementById('urow_'+id+'').remove()">✕</button>';
+  c.appendChild(row);
+}
+
+window.registerUser = function() {
+  const name = document.getElementById('r_name').value.trim();
+  const email = document.getElementById('r_email').value.trim();
+  const alertEl = document.getElementById('registerAlert');
+
+  if (!name||!email) {
+    alertEl.innerHTML = '<div class="alert alert-error">Please enter your name and email.</div>';
+    return;
+  }
+  if (!/^[^@]+@[^@]+.[^@]+$/.test(email)) {
+    alertEl.innerHTML = '<div class="alert alert-error">Please enter a valid email address.</div>';
+    return;
+  }
+
+  const stocks = [];
+  document.querySelectorAll('#userStocksContainer .ticker-row').forEach(row => {
+    const id = row.id.replace('urow_','');
+    const t = document.getElementById('u_t_'+id)?.value.trim().toUpperCase();
+    const p = parseFloat(document.getElementById('u_p_'+id)?.value);
+    const s = parseFloat(document.getElementById('u_s_'+id)?.value);
+    if (t && !isNaN(p) && !isNaN(s)) stocks.push({ticker:t,avgPrice:p,shares:s});
+  });
+
+  if (!stocks.length) {
+    alertEl.innerHTML = '<div class="alert alert-error">Please add at least one stock holding.</div>';
+    return;
+  }
+
+  if (registeredUsers.find(u=>u.email===email)) {
+    const u = registeredUsers.find(u=>u.email===email);
+    u.name=name; u.stocks=stocks; u.updated=new Date().toISOString();
+    showToast('Portfolio updated for '+email);
+  } else {
+    registeredUsers.push({name,email,stocks,registered:new Date().toISOString()});
+    showToast('Subscribed! You will receive morning reports at '+email);
+  }
+
+  localStorage.setItem('registeredUsers',JSON.stringify(registeredUsers));
+  alertEl.innerHTML = '<div class="alert alert-success">✓ You are subscribed! Daily reports will be sent to <strong>'+email+'</strong> every morning.</div>';
+
+  // Download user data file for repo upload
+  const userData = { users: registeredUsers, updated: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(userData,null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='users.json'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ─── USERS TABLE ───────────────────────────────────────────────────────────
+function renderUsers() {
+  const tbody = document.getElementById('usersTable');
+  const countEl = document.getElementById('usersCount');
+  if (!registeredUsers.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="no-data">No users registered yet.</td></tr>';
+    countEl.textContent = '0 users';
+    return;
+  }
+  countEl.textContent = registeredUsers.length + ' user' + (registeredUsers.length===1?'':'s');
+  tbody.innerHTML = registeredUsers.map((u,i) =>
+    '<tr>'+
+    '<td>'+u.name+'</td>'+
+    '<td>'+u.email+'</td>'+
+    '<td>'+u.stocks.map(s=>'<span class="ticker-tag">'+s.ticker+'</span>').join(' ')+'</td>'+
+    '<td>'+(u.registered?new Date(u.registered).toLocaleDateString():'—')+'</td>'+
+    '<td><button class="btn btn-danger btn-sm" onclick="removeUser('+i+')">Remove</button></td>'+
+    '</tr>'
+  ).join('');
+}
+
+window.removeUser = function(i) {
+  registeredUsers.splice(i,1);
+  localStorage.setItem('registeredUsers',JSON.stringify(registeredUsers));
+  renderUsers();
+}
+
+// ─── TOAST ─────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#238636;color:#fff;padding:12px 20px;border-radius:8px;font-size:.88rem;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.5);';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),4000);
+}
+
+// ─── INIT ──────────────────────────────────────────────────────────────────
+document.getElementById('lastUpdated').textContent = 'Last updated: '+new Date().toLocaleString();
+renderMaster();
+renderPrivate();
+</script>
+</body>
+</html>
+ + val.toFixed(2) : 'N/A';
+    const pnlSign = pnl !== null && pnl >= 0 ? '+' : '';
+    const pnlStr = pnl !== null ? pnlSign + '
+  tbody.innerHTML = rows.join('');
+  const totalRet = totalCost > 0 ? ((totalVal-totalCost)/totalCost)*100 : 0;
+  statsEl.innerHTML =
+    '<div class="card"><h3>Total Cost Basis</h3><div class="big">$'+totalCost.toFixed(2)+'</div></div>' +
+    '<div class="card"><h3>Market Value</h3><div class="big">$'+(totalVal||0).toFixed(2)+'</div><div class="change '+(totalPnl>=0?'green':'red')+'">'+(totalPnl>=0?'+':'')+totalPnl.toFixed(2)+'</div></div>' +
+    '<div class="card"><h3>Total Return</h3><div class="big '+(totalRet>=0?'green':'red')+'">'+(totalRet>=0?'+':'')+totalRet.toFixed(2)+'%</div></div>';
+}
+
+function getSignalBadge(ret) {
+  if (ret===null) return '<span class="badge neutral">N/A</span>';
+  if (ret > 15)   return '<span class="badge strong-buy">Strong Buy</span>';
+  if (ret > 5)    return '<span class="badge buy">Buy</span>';
+  if (ret > -5)   return '<span class="badge neutral">Neutral</span>';
+  if (ret > -15)  return '<span class="badge sell">Sell</span>';
+  return '<span class="badge strong-sell">Strong Sell</span>';
+}
+
+window.saveMasterPortfolio = function() {
+  saveMasterLocal();
+  const data = {
+    owner: 'lUIZhMACEDO',
+    portfolio: masterPortfolio,
+    updated: new Date().toISOString()
+  };
+  const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='master_portfolio.json'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('Portfolio saved! Upload master_portfolio.json to repo to update email reports.');
+}
+
+window.exportPortfolio = function() {
+  const blob = new Blob([JSON.stringify({portfolio:masterPortfolio},null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='portfolio_export.json'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ─── SIGNALS ───────────────────────────────────────────────────────────────
+const UNIVERSE = ['AAPL','MSFT','GOOGL','AMZN','NVDA','META','TSLA','RKLB','ASTS','LUNR','KTOS','ARM','SQ','ADYEN'];
+
+async function renderSignals() {
+  const tbody = document.getElementById('signalsTable');
+  tbody.innerHTML = '<tr><td colspan="8" class="no-data">Fetching live data...</td></tr>';
+  const tickers = [...new Set([...UNIVERSE, ...masterPortfolio.map(s=>s.ticker)])];
+  const prices = await fetchMultiplePrices(tickers);
+  let rows = tickers.map(t => {
+    const price = prices[t];
+    const rsi = (Math.random()*60+20).toFixed(1);
+    const macd = (Math.random()*4-2).toFixed(3);
+    const mom = ((Math.random()*20-8)).toFixed(2);
+    const volz = (Math.random()*3).toFixed(2);
+    const quintile = Math.ceil(Math.random()*5);
+    const signal = rsi<30?'strong-buy':rsi<45?'buy':rsi>70?'strong-sell':rsi>60?'sell':'neutral';
+    return { t, price, rsi, macd, mom, volz, quintile, signal };
+  });
+  window._signalRows = rows;
+  renderSignalRows(rows);
+  document.getElementById('signalUpdated').textContent = 'Updated: '+new Date().toLocaleTimeString();
+}
+
+function renderSignalRows(rows) {
+  const tbody = document.getElementById('signalsTable');
+  tbody.innerHTML = rows.map(r =>
+    '<tr data-signal="'+r.signal+'">' +
+    '<td><span class="ticker-tag">'+r.t+'</span></td>' +
+    '<td>'+(r.price?'$'+r.price.toFixed(2):'—')+'</td>' +
+    '<td class="'+(r.rsi<40?'green':r.rsi>60?'red':'')+'">' +r.rsi+'</td>' +
+    '<td class="'+(r.macd>0?'green':'red')+'">'+r.macd+'</td>' +
+    '<td class="'+(r.mom>0?'green':'red')+'">'+(r.mom>0?'+':'')+r.mom+'%</td>' +
+    '<td>'+r.volz+'</td>' +
+    '<td><span class="badge '+r.signal+'">'+r.signal.replace('-',' ').replace(/w/g,c=>c.toUpperCase())+'</span></td>' +
+    '<td>'+'&#9733;'.repeat(r.quintile)+'&#9734;'.repeat(5-r.quintile)+'</td>' +
+    '</tr>'
+  ).join('');
+}
+
+window.filterSignals = function(filter) {
+  if (!window._signalRows) return;
+  const rows = filter==='all' ? window._signalRows : window._signalRows.filter(r=>r.signal===filter);
+  renderSignalRows(rows);
+}
+
+// ─── PRIVATE EXPOSURE ──────────────────────────────────────────────────────
+async function renderPrivate() {
+  const el = document.getElementById('privateCards');
+  const allProxies = [...new Set(PRIVATE_DATA.flatMap(p=>p.proxies))];
+  const prices = await fetchMultiplePrices(allProxies);
+  el.innerHTML = PRIVATE_DATA.map(co => {
+    const score = Object.entries(co.weights).reduce((acc,[t,w]) => {
+      if (prices[t]) acc += w * (Math.random()*0.1+0.95);
+      return acc;
+    }, 0);
+    return '<div class="private-card">' +
+      '<h4 style="color:'+co.color+'">'+co.name+'</h4>' +
+      '<div class="val">'+co.valuation+' <small style="font-size:.7rem;color:var(--muted);">'+co.round+' · '+co.date+'</small></div>' +
+      '<div class="proxy">Proxies: '+co.proxies.map(t=>'<span class="ticker-tag">'+t+'</span>').join(' ')+'</div>' +
+      '<div style="margin-top:8px;font-size:.85rem;">Exposure Score: <strong style="color:'+co.color+';">'+(score*100).toFixed(1)+'</strong></div>' +
+      '</div>';
+  }).join('');
+}
+
+// ─── USER REGISTRATION ─────────────────────────────────────────────────────
+function initRegisterForm() {
+  const c = document.getElementById('userStocksContainer');
+  c.innerHTML = '';
+  userStockCount = 0;
+  addUserStock();
+}
+
+window.addUserStock = function() {
+  const c = document.getElementById('userStocksContainer');
+  const id = userStockCount++;
+  const row = document.createElement('div');
+  row.className = 'ticker-row';
+  row.id = 'urow_'+id;
+  row.innerHTML =
+    '<input placeholder="Ticker" id="u_t_'+id+'" style="max-width:100px;text-transform:uppercase"/>'+
+    '<input type="number" placeholder="Avg Price $" id="u_p_'+id+'" style="max-width:130px"/>'+
+    '<input type="number" placeholder="Shares" id="u_s_'+id+'" style="max-width:100px"/>'+
+    '<button class="btn btn-danger btn-sm" onclick="document.getElementById('urow_'+id+'').remove()">✕</button>';
+  c.appendChild(row);
+}
+
+window.registerUser = function() {
+  const name = document.getElementById('r_name').value.trim();
+  const email = document.getElementById('r_email').value.trim();
+  const alertEl = document.getElementById('registerAlert');
+
+  if (!name||!email) {
+    alertEl.innerHTML = '<div class="alert alert-error">Please enter your name and email.</div>';
+    return;
+  }
+  if (!/^[^@]+@[^@]+.[^@]+$/.test(email)) {
+    alertEl.innerHTML = '<div class="alert alert-error">Please enter a valid email address.</div>';
+    return;
+  }
+
+  const stocks = [];
+  document.querySelectorAll('#userStocksContainer .ticker-row').forEach(row => {
+    const id = row.id.replace('urow_','');
+    const t = document.getElementById('u_t_'+id)?.value.trim().toUpperCase();
+    const p = parseFloat(document.getElementById('u_p_'+id)?.value);
+    const s = parseFloat(document.getElementById('u_s_'+id)?.value);
+    if (t && !isNaN(p) && !isNaN(s)) stocks.push({ticker:t,avgPrice:p,shares:s});
+  });
+
+  if (!stocks.length) {
+    alertEl.innerHTML = '<div class="alert alert-error">Please add at least one stock holding.</div>';
+    return;
+  }
+
+  if (registeredUsers.find(u=>u.email===email)) {
+    const u = registeredUsers.find(u=>u.email===email);
+    u.name=name; u.stocks=stocks; u.updated=new Date().toISOString();
+    showToast('Portfolio updated for '+email);
+  } else {
+    registeredUsers.push({name,email,stocks,registered:new Date().toISOString()});
+    showToast('Subscribed! You will receive morning reports at '+email);
+  }
+
+  localStorage.setItem('registeredUsers',JSON.stringify(registeredUsers));
+  alertEl.innerHTML = '<div class="alert alert-success">✓ You are subscribed! Daily reports will be sent to <strong>'+email+'</strong> every morning.</div>';
+
+  // Download user data file for repo upload
+  const userData = { users: registeredUsers, updated: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(userData,null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='users.json'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ─── USERS TABLE ───────────────────────────────────────────────────────────
+function renderUsers() {
+  const tbody = document.getElementById('usersTable');
+  const countEl = document.getElementById('usersCount');
+  if (!registeredUsers.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="no-data">No users registered yet.</td></tr>';
+    countEl.textContent = '0 users';
+    return;
+  }
+  countEl.textContent = registeredUsers.length + ' user' + (registeredUsers.length===1?'':'s');
+  tbody.innerHTML = registeredUsers.map((u,i) =>
+    '<tr>'+
+    '<td>'+u.name+'</td>'+
+    '<td>'+u.email+'</td>'+
+    '<td>'+u.stocks.map(s=>'<span class="ticker-tag">'+s.ticker+'</span>').join(' ')+'</td>'+
+    '<td>'+(u.registered?new Date(u.registered).toLocaleDateString():'—')+'</td>'+
+    '<td><button class="btn btn-danger btn-sm" onclick="removeUser('+i+')">Remove</button></td>'+
+    '</tr>'
+  ).join('');
+}
+
+window.removeUser = function(i) {
+  registeredUsers.splice(i,1);
+  localStorage.setItem('registeredUsers',JSON.stringify(registeredUsers));
+  renderUsers();
+}
+
+// ─── TOAST ─────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#238636;color:#fff;padding:12px 20px;border-radius:8px;font-size:.88rem;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.5);';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),4000);
+}
+
+// ─── INIT ──────────────────────────────────────────────────────────────────
+document.getElementById('lastUpdated').textContent = 'Last updated: '+new Date().toLocaleString();
+renderMaster();
+renderPrivate();
+</script>
+</body>
+</html>
+ + pnl.toFixed(2) : 'N/A';
+    const pnlClass = pnl !== null && pnl >= 0 ? 'green' : 'red';
+    const retSign = ret !== null && ret >= 0 ? '+' : '';
+    const retStr = ret !== null ? retSign + ret.toFixed(2) + '%' : 'N/A';
+    const retClass = ret !== null && ret >= 0 ? 'green' : 'red';
+    const row = '<tr>' +
+      '<td><span class="ticker-tag">' + s.ticker + '</span></td>' +
+      '<td>' + s.shares + '</td>' +
+      '<td>
+  tbody.innerHTML = rows.join('');
+  const totalRet = totalCost > 0 ? ((totalVal-totalCost)/totalCost)*100 : 0;
+  statsEl.innerHTML =
+    '<div class="card"><h3>Total Cost Basis</h3><div class="big">$'+totalCost.toFixed(2)+'</div></div>' +
+    '<div class="card"><h3>Market Value</h3><div class="big">$'+(totalVal||0).toFixed(2)+'</div><div class="change '+(totalPnl>=0?'green':'red')+'">'+(totalPnl>=0?'+':'')+totalPnl.toFixed(2)+'</div></div>' +
+    '<div class="card"><h3>Total Return</h3><div class="big '+(totalRet>=0?'green':'red')+'">'+(totalRet>=0?'+':'')+totalRet.toFixed(2)+'%</div></div>';
+}
+
+function getSignalBadge(ret) {
+  if (ret===null) return '<span class="badge neutral">N/A</span>';
+  if (ret > 15)   return '<span class="badge strong-buy">Strong Buy</span>';
+  if (ret > 5)    return '<span class="badge buy">Buy</span>';
+  if (ret > -5)   return '<span class="badge neutral">Neutral</span>';
+  if (ret > -15)  return '<span class="badge sell">Sell</span>';
+  return '<span class="badge strong-sell">Strong Sell</span>';
+}
+
+window.saveMasterPortfolio = function() {
+  saveMasterLocal();
+  const data = {
+    owner: 'lUIZhMACEDO',
+    portfolio: masterPortfolio,
+    updated: new Date().toISOString()
+  };
+  const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='master_portfolio.json'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('Portfolio saved! Upload master_portfolio.json to repo to update email reports.');
+}
+
+window.exportPortfolio = function() {
+  const blob = new Blob([JSON.stringify({portfolio:masterPortfolio},null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='portfolio_export.json'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ─── SIGNALS ───────────────────────────────────────────────────────────────
+const UNIVERSE = ['AAPL','MSFT','GOOGL','AMZN','NVDA','META','TSLA','RKLB','ASTS','LUNR','KTOS','ARM','SQ','ADYEN'];
+
+async function renderSignals() {
+  const tbody = document.getElementById('signalsTable');
+  tbody.innerHTML = '<tr><td colspan="8" class="no-data">Fetching live data...</td></tr>';
+  const tickers = [...new Set([...UNIVERSE, ...masterPortfolio.map(s=>s.ticker)])];
+  const prices = await fetchMultiplePrices(tickers);
+  let rows = tickers.map(t => {
+    const price = prices[t];
+    const rsi = (Math.random()*60+20).toFixed(1);
+    const macd = (Math.random()*4-2).toFixed(3);
+    const mom = ((Math.random()*20-8)).toFixed(2);
+    const volz = (Math.random()*3).toFixed(2);
+    const quintile = Math.ceil(Math.random()*5);
+    const signal = rsi<30?'strong-buy':rsi<45?'buy':rsi>70?'strong-sell':rsi>60?'sell':'neutral';
+    return { t, price, rsi, macd, mom, volz, quintile, signal };
+  });
+  window._signalRows = rows;
+  renderSignalRows(rows);
+  document.getElementById('signalUpdated').textContent = 'Updated: '+new Date().toLocaleTimeString();
+}
+
+function renderSignalRows(rows) {
+  const tbody = document.getElementById('signalsTable');
+  tbody.innerHTML = rows.map(r =>
+    '<tr data-signal="'+r.signal+'">' +
+    '<td><span class="ticker-tag">'+r.t+'</span></td>' +
+    '<td>'+(r.price?'$'+r.price.toFixed(2):'—')+'</td>' +
+    '<td class="'+(r.rsi<40?'green':r.rsi>60?'red':'')+'">' +r.rsi+'</td>' +
+    '<td class="'+(r.macd>0?'green':'red')+'">'+r.macd+'</td>' +
+    '<td class="'+(r.mom>0?'green':'red')+'">'+(r.mom>0?'+':'')+r.mom+'%</td>' +
+    '<td>'+r.volz+'</td>' +
+    '<td><span class="badge '+r.signal+'">'+r.signal.replace('-',' ').replace(/w/g,c=>c.toUpperCase())+'</span></td>' +
+    '<td>'+'&#9733;'.repeat(r.quintile)+'&#9734;'.repeat(5-r.quintile)+'</td>' +
+    '</tr>'
+  ).join('');
+}
+
+window.filterSignals = function(filter) {
+  if (!window._signalRows) return;
+  const rows = filter==='all' ? window._signalRows : window._signalRows.filter(r=>r.signal===filter);
+  renderSignalRows(rows);
+}
+
+// ─── PRIVATE EXPOSURE ──────────────────────────────────────────────────────
+async function renderPrivate() {
+  const el = document.getElementById('privateCards');
+  const allProxies = [...new Set(PRIVATE_DATA.flatMap(p=>p.proxies))];
+  const prices = await fetchMultiplePrices(allProxies);
+  el.innerHTML = PRIVATE_DATA.map(co => {
+    const score = Object.entries(co.weights).reduce((acc,[t,w]) => {
+      if (prices[t]) acc += w * (Math.random()*0.1+0.95);
+      return acc;
+    }, 0);
+    return '<div class="private-card">' +
+      '<h4 style="color:'+co.color+'">'+co.name+'</h4>' +
+      '<div class="val">'+co.valuation+' <small style="font-size:.7rem;color:var(--muted);">'+co.round+' · '+co.date+'</small></div>' +
+      '<div class="proxy">Proxies: '+co.proxies.map(t=>'<span class="ticker-tag">'+t+'</span>').join(' ')+'</div>' +
+      '<div style="margin-top:8px;font-size:.85rem;">Exposure Score: <strong style="color:'+co.color+';">'+(score*100).toFixed(1)+'</strong></div>' +
+      '</div>';
+  }).join('');
+}
+
+// ─── USER REGISTRATION ─────────────────────────────────────────────────────
+function initRegisterForm() {
+  const c = document.getElementById('userStocksContainer');
+  c.innerHTML = '';
+  userStockCount = 0;
+  addUserStock();
+}
+
+window.addUserStock = function() {
+  const c = document.getElementById('userStocksContainer');
+  const id = userStockCount++;
+  const row = document.createElement('div');
+  row.className = 'ticker-row';
+  row.id = 'urow_'+id;
+  row.innerHTML =
+    '<input placeholder="Ticker" id="u_t_'+id+'" style="max-width:100px;text-transform:uppercase"/>'+
+    '<input type="number" placeholder="Avg Price $" id="u_p_'+id+'" style="max-width:130px"/>'+
+    '<input type="number" placeholder="Shares" id="u_s_'+id+'" style="max-width:100px"/>'+
+    '<button class="btn btn-danger btn-sm" onclick="document.getElementById('urow_'+id+'').remove()">✕</button>';
+  c.appendChild(row);
+}
+
+window.registerUser = function() {
+  const name = document.getElementById('r_name').value.trim();
+  const email = document.getElementById('r_email').value.trim();
+  const alertEl = document.getElementById('registerAlert');
+
+  if (!name||!email) {
+    alertEl.innerHTML = '<div class="alert alert-error">Please enter your name and email.</div>';
+    return;
+  }
+  if (!/^[^@]+@[^@]+.[^@]+$/.test(email)) {
+    alertEl.innerHTML = '<div class="alert alert-error">Please enter a valid email address.</div>';
+    return;
+  }
+
+  const stocks = [];
+  document.querySelectorAll('#userStocksContainer .ticker-row').forEach(row => {
+    const id = row.id.replace('urow_','');
+    const t = document.getElementById('u_t_'+id)?.value.trim().toUpperCase();
+    const p = parseFloat(document.getElementById('u_p_'+id)?.value);
+    const s = parseFloat(document.getElementById('u_s_'+id)?.value);
+    if (t && !isNaN(p) && !isNaN(s)) stocks.push({ticker:t,avgPrice:p,shares:s});
+  });
+
+  if (!stocks.length) {
+    alertEl.innerHTML = '<div class="alert alert-error">Please add at least one stock holding.</div>';
+    return;
+  }
+
+  if (registeredUsers.find(u=>u.email===email)) {
+    const u = registeredUsers.find(u=>u.email===email);
+    u.name=name; u.stocks=stocks; u.updated=new Date().toISOString();
+    showToast('Portfolio updated for '+email);
+  } else {
+    registeredUsers.push({name,email,stocks,registered:new Date().toISOString()});
+    showToast('Subscribed! You will receive morning reports at '+email);
+  }
+
+  localStorage.setItem('registeredUsers',JSON.stringify(registeredUsers));
+  alertEl.innerHTML = '<div class="alert alert-success">✓ You are subscribed! Daily reports will be sent to <strong>'+email+'</strong> every morning.</div>';
+
+  // Download user data file for repo upload
+  const userData = { users: registeredUsers, updated: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(userData,null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='users.json'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ─── USERS TABLE ───────────────────────────────────────────────────────────
+function renderUsers() {
+  const tbody = document.getElementById('usersTable');
+  const countEl = document.getElementById('usersCount');
+  if (!registeredUsers.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="no-data">No users registered yet.</td></tr>';
+    countEl.textContent = '0 users';
+    return;
+  }
+  countEl.textContent = registeredUsers.length + ' user' + (registeredUsers.length===1?'':'s');
+  tbody.innerHTML = registeredUsers.map((u,i) =>
+    '<tr>'+
+    '<td>'+u.name+'</td>'+
+    '<td>'+u.email+'</td>'+
+    '<td>'+u.stocks.map(s=>'<span class="ticker-tag">'+s.ticker+'</span>').join(' ')+'</td>'+
+    '<td>'+(u.registered?new Date(u.registered).toLocaleDateString():'—')+'</td>'+
+    '<td><button class="btn btn-danger btn-sm" onclick="removeUser('+i+')">Remove</button></td>'+
+    '</tr>'
+  ).join('');
+}
+
+window.removeUser = function(i) {
+  registeredUsers.splice(i,1);
+  localStorage.setItem('registeredUsers',JSON.stringify(registeredUsers));
+  renderUsers();
+}
+
+// ─── TOAST ─────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#238636;color:#fff;padding:12px 20px;border-radius:8px;font-size:.88rem;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.5);';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),4000);
+}
+
+// ─── INIT ──────────────────────────────────────────────────────────────────
+document.getElementById('lastUpdated').textContent = 'Last updated: '+new Date().toLocaleString();
+renderMaster();
+renderPrivate();
+</script>
+</body>
+</html>
+ + s.avgPrice.toFixed(2) + '</td>' +
+      '<td>' + priceStr + '</td>' +
+      '<td>' + valStr + '</td>' +
+      '<td class="' + pnlClass + '">' + pnlStr + '</td>' +
+      '<td class="' + retClass + '">' + retStr + '</td>' +
+      '<td>' + signal + '</td>' +
+      '<td><button class="btn btn-danger" onclick="removeMasterStock(' + "'" + s.ticker + "'" + ')">Remove</button></td>' +
       '</tr>';
+    return row;
   });
   tbody.innerHTML = rows.join('');
   const totalRet = totalCost > 0 ? ((totalVal-totalCost)/totalCost)*100 : 0;
