@@ -5,62 +5,53 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Quant Research System</title>
 <style>
-  :root{--bg:#0d1117;--card:#161b22;--border:#30363d;--accent:#58a6ff;--green:#3fb950;--red:#f85149;--yellow:#d29922;--text:#e6edf3;--muted:#8b949e;--purple:#bc8cff;}
-  *{box-sizing:border-box;margin:0;padding:0;}
-  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;}
-  header{background:var(--card);border-bottom:1px solid var(--border);padding:16px 32px;display:flex;align-items:center;justify-content:space-between;}
-  header h1{font-size:1.2rem;font-weight:700;color:var(--accent);}
-  header span{font-size:.8rem;color:var(--muted);}
-  nav{display:flex;gap:8px;background:var(--card);border-bottom:1px solid var(--border);padding:0 32px;}
-  nav button{background:none;border:none;color:var(--muted);padding:14px 16px;cursor:pointer;font-size:.9rem;border-bottom:2px solid transparent;transition:.2s;}
-  nav button.active{color:var(--accent);border-bottom-color:var(--accent);}
-  nav button:hover{color:var(--text);}
-  .container{max-width:1200px;margin:0 auto;padding:32px;}
-  .page{display:none;}.page.active{display:block;}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
-  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px;}
-  .card h3{font-size:.85rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;}
-  .card .big{font-size:1.8rem;font-weight:700;}
-  .card .change{font-size:.85rem;margin-top:4px;}
-  .green{color:var(--green);}.red{color:var(--red);}.yellow{color:var(--yellow);}
-  table{width:100%;border-collapse:collapse;margin-top:16px;}
-  th{text-align:left;padding:10px 12px;font-size:.78rem;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
-  td{padding:10px 12px;font-size:.88rem;border-bottom:1px solid var(--border);}
-  tr:hover td{background:rgba(88,166,255,.04);}
-  .badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:.75rem;font-weight:600;}
-  .badge.strong-buy{background:rgba(63,185,80,.2);color:var(--green);}
-  .badge.buy{background:rgba(63,185,80,.1);color:var(--green);}
-  .badge.neutral{background:rgba(139,148,158,.15);color:var(--muted);}
-  .badge.sell{background:rgba(248,81,73,.1);color:var(--red);}
-  .badge.strong-sell{background:rgba(248,81,73,.2);color:var(--red);}
-  .section-title{font-size:1.1rem;font-weight:600;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border);}
-  .form-group{margin-bottom:16px;}
-  .form-group label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:6px;}
-  .form-group input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px 12px;color:var(--text);font-size:.9rem;outline:none;transition:.2s;}
-  .form-group input:focus{border-color:var(--accent);}
-  .btn{padding:10px 20px;border-radius:6px;border:none;font-size:.9rem;font-weight:600;cursor:pointer;transition:.2s;}
-  .btn-primary{background:var(--accent);color:#000;}
-  .btn-primary:hover{opacity:.85;}
-  .btn-danger{background:var(--red);color:#fff;padding:4px 10px;font-size:.78rem;}
-  .btn-danger:hover{opacity:.8;}
-  .btn-sm{padding:4px 10px;font-size:.78rem;}
-  .btn-outline{background:none;border:1px solid var(--border);color:var(--text);}
-  .btn-outline:hover{border-color:var(--accent);color:var(--accent);}
-  .ticker-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;}
-  .ticker-row input{flex:1;min-width:80px;}
-  .alert{padding:12px 16px;border-radius:6px;margin-bottom:16px;font-size:.88rem;}
-  .alert-success{background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.3);color:var(--green);}
-  .alert-error{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);color:var(--red);}
-  .private-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:8px;}
-  .private-card h4{font-size:.9rem;font-weight:600;margin-bottom:4px;}
-  .private-card .val{font-size:1.1rem;font-weight:700;color:var(--purple);}
-  .private-card .proxy{font-size:.78rem;color:var(--muted);margin-top:4px;}
-  .tab-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
-  .last-updated{font-size:.78rem;color:var(--muted);}
-  .ticker-tag{background:rgba(88,166,255,.1);border:1px solid rgba(88,166,255,.2);border-radius:4px;padding:2px 6px;font-size:.75rem;color:var(--accent);}
-  .no-data{text-align:center;padding:40px;color:var(--muted);font-size:.9rem;}
-  @media(max-width:768px){.grid2,.grid3{grid-template-columns:1fr;}.container{padding:16px;}nav{padding:0 16px;}header{padding:12px 16px;}}
+:root{--bg:#0d1117;--card:#161b22;--border:#30363d;--accent:#58a6ff;--green:#3fb950;--red:#f85149;--yellow:#d29922;--text:#e6edf3;--muted:#8b949e;--purple:#bc8cff;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:"Segoe UI",system-ui,sans-serif;min-height:100vh;}
+header{background:var(--card);border-bottom:1px solid var(--border);padding:16px 32px;display:flex;align-items:center;justify-content:space-between;}
+header h1{font-size:1.2rem;font-weight:700;color:var(--accent);}
+header span{font-size:.8rem;color:var(--muted);}
+nav{display:flex;gap:8px;background:var(--card);border-bottom:1px solid var(--border);padding:0 32px;}
+nav button{background:none;border:none;color:var(--muted);padding:14px 16px;cursor:pointer;font-size:.9rem;border-bottom:2px solid transparent;transition:.2s;}
+nav button.active{color:var(--accent);border-bottom-color:var(--accent);}
+nav button:hover{color:var(--text);}
+.container{max-width:1200px;margin:0 auto;padding:32px;}
+.page{display:none;}.page.active{display:block;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px;}
+.card h3{font-size:.85rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;}
+.card .big{font-size:1.8rem;font-weight:700;}
+.card .change{font-size:.85rem;margin-top:4px;}
+.green{color:var(--green);}.red{color:var(--red);}
+table{width:100%;border-collapse:collapse;margin-top:16px;}
+th{text-align:left;padding:10px 12px;font-size:.78rem;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+td{padding:10px 12px;font-size:.88rem;border-bottom:1px solid var(--border);}
+tr:hover td{background:rgba(88,166,255,.04);}
+.badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:.75rem;font-weight:600;}
+.badge.strong-buy{background:rgba(63,185,80,.2);color:var(--green);}
+.badge.buy{background:rgba(63,185,80,.1);color:var(--green);}
+.badge.neutral{background:rgba(139,148,158,.15);color:var(--muted);}
+.badge.sell{background:rgba(248,81,73,.1);color:var(--red);}
+.badge.strong-sell{background:rgba(248,81,73,.2);color:var(--red);}
+.section-title{font-size:1.1rem;font-weight:600;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.form-group{margin-bottom:16px;}
+.form-group label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:6px;}
+.form-group input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px 12px;color:var(--text);font-size:.9rem;outline:none;}
+.btn{padding:10px 20px;border-radius:6px;border:none;font-size:.9rem;font-weight:600;cursor:pointer;}
+.btn-primary{background:var(--accent);color:#000;}
+.btn-danger{background:var(--red);color:#fff;padding:4px 10px;font-size:.78rem;}
+.btn-sm{padding:4px 10px;font-size:.78rem;}
+.btn-outline{background:none;border:1px solid var(--border);color:var(--text);}
+.ticker-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+.alert{padding:12px 16px;border-radius:6px;margin-bottom:16px;font-size:.88rem;}
+.alert-success{background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.3);color:var(--green);}
+.alert-error{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);color:var(--red);}
+.private-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:8px;}
+.tab-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
+.last-updated{font-size:.78rem;color:var(--muted);}
+.ticker-tag{background:rgba(88,166,255,.1);border:1px solid rgba(88,166,255,.2);border-radius:4px;padding:2px 6px;font-size:.75rem;color:var(--accent);}
+.no-data{text-align:center;padding:40px;color:var(--muted);font-size:.9rem;}
 </style>
 </head>
 <body>
@@ -80,13 +71,12 @@
 
 <div class="container">
 
-  <!-- MASTER PORTFOLIO PAGE -->
+  <!-- MASTER PORTFOLIO -->
   <div id="page-master" class="page active">
     <div class="tab-header">
       <div class="section-title" style="margin:0;border:none;">Master Portfolio</div>
       <button class="btn btn-primary btn-sm" onclick="showAddStock()">+ Add Stock</button>
     </div>
-
     <div id="addStockForm" style="display:none;margin-bottom:20px;">
       <div class="card">
         <div class="section-title">Add Stock to Master Portfolio</div>
@@ -99,23 +89,20 @@
         <button class="btn btn-outline" style="margin-left:8px;" onclick="document.getElementById('addStockForm').style.display='none'">Cancel</button>
       </div>
     </div>
-
     <div class="grid3" id="masterStats" style="margin-bottom:20px;"></div>
-
     <div class="card">
       <table>
         <thead><tr><th>Ticker</th><th>Shares</th><th>Avg Cost</th><th>Market Price</th><th>Market Value</th><th>P&amp;L</th><th>Return</th><th>Signal</th><th></th></tr></thead>
         <tbody id="masterTable"><tr><td colspan="9" class="no-data">Loading portfolio...</td></tr></tbody>
       </table>
     </div>
-
     <div style="margin-top:16px;display:flex;gap:8px;">
       <button class="btn btn-primary" onclick="saveMasterPortfolio()">Save &amp; Regenerate Report</button>
       <button class="btn btn-outline" onclick="exportPortfolio()">Export JSON</button>
     </div>
   </div>
 
-  <!-- SIGNALS PAGE -->
+  <!-- SIGNALS -->
   <div id="page-signals" class="page">
     <div class="tab-header">
       <div class="section-title" style="margin:0;border:none;">Signal Dashboard</div>
@@ -123,45 +110,43 @@
     </div>
     <div class="card">
       <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn btn-sm btn-outline active-filter" onclick="filterSignals('all')">All</button>
+        <button class="btn btn-sm btn-outline" onclick="filterSignals('all')">All</button>
         <button class="btn btn-sm btn-outline" onclick="filterSignals('strong-buy')">Strong Buy</button>
         <button class="btn btn-sm btn-outline" onclick="filterSignals('buy')">Buy</button>
         <button class="btn btn-sm btn-outline" onclick="filterSignals('neutral')">Neutral</button>
         <button class="btn btn-sm btn-outline" onclick="filterSignals('sell')">Sell</button>
       </div>
       <table>
-        <thead><tr><th>Ticker</th><th>Close</th><th>RSI</th><th>MACD</th><th>Momentum 21d</th><th>Vol Z</th><th>Signal</th><th>ML Quintile</th></tr></thead>
+        <thead><tr><th>Ticker</th><th>Close</th><th>RSI</th><th>MACD</th><th>Mom 21d</th><th>Vol Z</th><th>Signal</th><th>ML Quintile</th></tr></thead>
         <tbody id="signalsTable"><tr><td colspan="8" class="no-data">Loading signals...</td></tr></tbody>
       </table>
     </div>
   </div>
 
-  <!-- PRIVATE EXPOSURE PAGE -->
+  <!-- PRIVATE EXPOSURE -->
   <div id="page-private" class="page">
     <div class="section-title">Private Company Exposure</div>
-    <p style="color:var(--muted);font-size:.85rem;margin-bottom:20px;">Synthetic exposure scores derived from weighted public proxy stocks. Updated daily via ingest pipeline.</p>
+    <p style="color:var(--muted);font-size:.85rem;margin-bottom:20px;">Synthetic exposure scores from weighted public proxy stocks. Updated daily.</p>
     <div class="grid2" id="privateCards"></div>
   </div>
 
-  <!-- USER SIGN-UP PAGE -->
+  <!-- USER SIGN-UP -->
   <div id="page-register" class="page">
     <div class="section-title">Track Your Portfolio</div>
-    <p style="color:var(--muted);font-size:.85rem;margin-bottom:20px;">Enter your holdings below and receive a personalized daily morning email with your portfolio P&amp;L, signals, and market recap.</p>
-
+    <p style="color:var(--muted);font-size:.85rem;margin-bottom:20px;">Enter your holdings and receive a personalized daily morning email.</p>
     <div class="card" style="max-width:600px;">
       <div id="registerAlert"></div>
       <div class="form-group"><label>Your Name</label><input id="r_name" placeholder="John Smith"/></div>
-      <div class="form-group"><label>Email Address (for daily report)</label><input id="r_email" type="email" placeholder="you@example.com"/></div>
-
+      <div class="form-group"><label>Email Address</label><input id="r_email" type="email" placeholder="you@example.com"/></div>
       <div class="section-title" style="font-size:.95rem;margin-top:8px;">Your Holdings</div>
       <div id="userStocksContainer"></div>
       <button class="btn btn-outline btn-sm" onclick="addUserStock()" style="margin-bottom:16px;">+ Add Stock</button>
-
+      <br/>
       <button class="btn btn-primary" onclick="registerUser()">Subscribe to Daily Report</button>
     </div>
   </div>
 
-  <!-- USERS MANAGEMENT PAGE -->
+  <!-- USERS -->
   <div id="page-users" class="page">
     <div class="tab-header">
       <div class="section-title" style="margin:0;border:none;">Registered Users</div>
@@ -178,1218 +163,367 @@
 </div>
 
 <script>
-// ─── CONFIG ────────────────────────────────────────────────────────────────
-const REPO_OWNER = 'lUIZhMACEDO';
-const REPO_NAME  = 'quant-research-system';
-const BRANCH     = 'master';
-const API_BASE   = 'https://api.github.com/repos/' + REPO_OWNER + '/' + REPO_NAME;
+(function() {
 
-// ─── PRIVATE COMPANY DATA ──────────────────────────────────────────────────
-const PRIVATE_DATA = [
-  { name:'Anthropic', valuation:'$61.5B', round:'Series F', date:'Mar 2025',
-    proxies:['AMZN','GOOG','NVDA','MSFT','ARM'], color:'#bc8cff',
-    weights:{AMZN:.27,GOOG:.10,NVDA:.30,MSFT:.15,ARM:.18} },
-  { name:'SpaceX', valuation:'$350B', round:'Tender Offer', date:'Dec 2024',
-    proxies:['RKLB','ASTS','LUNR','KTOS'], color:'#58a6ff',
-    weights:{RKLB:.35,ASTS:.25,LUNR:.20,KTOS:.20} },
-  { name:'OpenAI', valuation:'$300B', round:'Series F+', date:'Jan 2025',
-    proxies:['MSFT','NVDA','ARM'], color:'#3fb950',
-    weights:{MSFT:.60,NVDA:.30,ARM:.10} },
-  { name:'xAI', valuation:'$50B', round:'Series B', date:'Nov 2024',
-    proxies:['TSLA'], color:'#d29922',
-    weights:{TSLA:1.0} },
-  { name:'Stripe', valuation:'$91.5B', round:'Secondary', date:'Oct 2024',
-    proxies:['SQ','ADYEN'], color:'#f85149',
-    weights:{SQ:.55,ADYEN:.45} },
+// Config
+var PRIVATE_DATA = [
+  {name:"Anthropic",val:"$61.5B",round:"Series F",date:"Mar 2025",proxies:["AMZN","GOOG","NVDA","MSFT","ARM"],color:"#bc8cff",w:{AMZN:.27,GOOG:.10,NVDA:.30,MSFT:.15,ARM:.18}},
+  {name:"SpaceX",val:"$350B",round:"Tender Offer",date:"Dec 2024",proxies:["RKLB","ASTS","LUNR","KTOS"],color:"#58a6ff",w:{RKLB:.35,ASTS:.25,LUNR:.20,KTOS:.20}},
+  {name:"OpenAI",val:"$300B",round:"Series F+",date:"Jan 2025",proxies:["MSFT","NVDA","ARM"],color:"#3fb950",w:{MSFT:.60,NVDA:.30,ARM:.10}},
+  {name:"xAI",val:"$50B",round:"Series B",date:"Nov 2024",proxies:["TSLA"],color:"#d29922",w:{TSLA:1.0}},
+  {name:"Stripe",val:"$91.5B",round:"Secondary",date:"Oct 2024",proxies:["SQ","ADYEN"],color:"#f85149",w:{SQ:.55,ADYEN:.45}}
 ];
 
-// ─── STATE ─────────────────────────────────────────────────────────────────
-let masterPortfolio = JSON.parse(localStorage.getItem('masterPortfolio') || '[]');
-let registeredUsers = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
-let priceCache = {};
-let userStockCount = 1;
+var UNIVERSE = ["AAPL","MSFT","GOOGL","AMZN","NVDA","META","TSLA","RKLB","ASTS","LUNR","KTOS","ARM","SQ"];
+var masterPortfolio = JSON.parse(localStorage.getItem("masterPortfolio") || "[]");
+var registeredUsers = JSON.parse(localStorage.getItem("registeredUsers") || "[]");
+var priceCache = {};
+var userStockCount = 0;
 
-// ─── NAVIGATION ────────────────────────────────────────────────────────────
+// Helpers
+function clr(v) { return (v >= 0) ? "green" : "red"; }
+function fpct(v) { return (v >= 0 ? "+" : "") + v.toFixed(2) + "%"; }
+function fusd(v) {
+  if (v === null || v === undefined) return "N/A";
+  return (v >= 0 ? "+" : "-") + "$" + Math.abs(v).toFixed(2);
+}
+
+// Navigation
 window.showPage = function(name, btn) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-  document.getElementById('page-'+name).classList.add('active');
-  if (btn) btn.classList.add('active');
-  if (name==='master') renderMaster();
-  if (name==='signals') renderSignals();
-  if (name==='private') renderPrivate();
-  if (name==='users') renderUsers();
-  if (name==='register') initRegisterForm();
-}
+  var pages = document.querySelectorAll(".page");
+  for (var i = 0; i < pages.length; i++) pages[i].classList.remove("active");
+  var btns = document.querySelectorAll("nav button");
+  for (var i = 0; i < btns.length; i++) btns[i].classList.remove("active");
+  var pg = document.getElementById("page-" + name);
+  if (pg) pg.classList.add("active");
+  if (btn) btn.classList.add("active");
+  if (name === "master") renderMaster();
+  if (name === "signals") renderSignals();
+  if (name === "private") renderPrivate();
+  if (name === "users") renderUsers();
+  if (name === "register") initRegisterForm();
+};
 
-// ─── PRICE FETCHING ────────────────────────────────────────────────────────
-async function fetchPrice(ticker) {
-  if (priceCache[ticker] && Date.now()-priceCache[ticker].ts < 60000) return priceCache[ticker].price;
-  try {
-    const r = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/' + ticker + '?interval=1d&range=2d', {mode:'cors'});
-    const d = await r.json();
-    const price = d.chart.result[0].meta.regularMarketPrice;
-    priceCache[ticker] = {price, ts:Date.now()};
+// Price fetching
+function fetchPrice(ticker) {
+  if (priceCache[ticker] && Date.now() - priceCache[ticker].ts < 60000) {
+    return Promise.resolve(priceCache[ticker].price);
+  }
+  var url = "https://query1.finance.yahoo.com/v8/finance/chart/" + ticker + "?interval=1d&range=2d";
+  return fetch(url, {mode:"cors"}).then(function(r) { return r.json(); }).then(function(d) {
+    var price = d.chart.result[0].meta.regularMarketPrice;
+    priceCache[ticker] = {price: price, ts: Date.now()};
     return price;
-  } catch(e) { return null; }
+  }).catch(function() { return null; });
 }
 
-async function fetchMultiplePrices(tickers) {
-  const results = {};
-  await Promise.all(tickers.map(async t => { results[t] = await fetchPrice(t); }));
-  return results;
+function fetchMultiple(tickers) {
+  return Promise.all(tickers.map(function(t) {
+    return fetchPrice(t).then(function(p) { return {ticker: t, price: p}; });
+  })).then(function(arr) {
+    var result = {};
+    arr.forEach(function(x) { result[x.ticker] = x.price; });
+    return result;
+  });
 }
 
-// ─── MASTER PORTFOLIO ──────────────────────────────────────────────────────
+// Master Portfolio
 window.showAddStock = function() {
-  document.getElementById('addStockForm').style.display = 'block';
-}
+  document.getElementById("addStockForm").style.display = "block";
+};
 
 window.addMasterStock = function() {
-  const ticker = document.getElementById('m_ticker').value.trim().toUpperCase();
-  const avg = parseFloat(document.getElementById('m_avg').value);
-  const shares = parseFloat(document.getElementById('m_shares').value);
-  if (!ticker||isNaN(avg)||isNaN(shares)) { alert('Please fill all fields.'); return; }
-  const existing = masterPortfolio.find(s => s.ticker===ticker);
-  if (existing) { existing.avgPrice=avg; existing.shares=shares; }
-  else masterPortfolio.push({ticker,avgPrice:avg,shares});
+  var ticker = document.getElementById("m_ticker").value.trim().toUpperCase();
+  var avg = parseFloat(document.getElementById("m_avg").value);
+  var shares = parseFloat(document.getElementById("m_shares").value);
+  if (!ticker || isNaN(avg) || isNaN(shares)) { alert("Please fill all fields."); return; }
+  var existing = masterPortfolio.filter(function(s) { return s.ticker === ticker; })[0];
+  if (existing) { existing.avgPrice = avg; existing.shares = shares; }
+  else { masterPortfolio.push({ticker: ticker, avgPrice: avg, shares: shares}); }
   saveMasterLocal();
-  document.getElementById('addStockForm').style.display='none';
-  document.getElementById('m_ticker').value='';
-  document.getElementById('m_avg').value='';
-  document.getElementById('m_shares').value='';
+  document.getElementById("addStockForm").style.display = "none";
+  document.getElementById("m_ticker").value = "";
+  document.getElementById("m_avg").value = "";
+  document.getElementById("m_shares").value = "";
   renderMaster();
-}
+};
 
 window.removeMasterStock = function(ticker) {
-  masterPortfolio = masterPortfolio.filter(s => s.ticker!==ticker);
+  masterPortfolio = masterPortfolio.filter(function(s) { return s.ticker !== ticker; });
   saveMasterLocal();
   renderMaster();
-}
+};
 
 function saveMasterLocal() {
-  localStorage.setItem('masterPortfolio', JSON.stringify(masterPortfolio));
+  localStorage.setItem("masterPortfolio", JSON.stringify(masterPortfolio));
 }
 
-async function renderMaster() {
-  const tbody = document.getElementById('masterTable');
-  const statsEl = document.getElementById('masterStats');
+function getSignalBadge(ret) {
+  if (ret === null) return "<span class=\"badge neutral\">N/A</span>";
+  if (ret > 15) return "<span class=\"badge strong-buy\">Strong Buy</span>";
+  if (ret > 5) return "<span class=\"badge buy\">Buy</span>";
+  if (ret > -5) return "<span class=\"badge neutral\">Neutral</span>";
+  if (ret > -15) return "<span class=\"badge sell\">Sell</span>";
+  return "<span class=\"badge strong-sell\">Strong Sell</span>";
+}
+
+function renderMaster() {
+  var tbody = document.getElementById("masterTable");
+  var statsEl = document.getElementById("masterStats");
   if (!masterPortfolio.length) {
-    tbody.innerHTML = '<tr><td colspan="9" class="no-data">No stocks in master portfolio. Click "+ Add Stock" to begin.</td></tr>';
-    statsEl.innerHTML = '';
+    tbody.innerHTML = "<tr><td colspan=\"9\" class=\"no-data\">No stocks. Click + Add Stock.</td></tr>";
+    statsEl.innerHTML = "";
     return;
   }
-  tbody.innerHTML = '<tr><td colspan="9" class="no-data">Fetching prices...</td></tr>';
-  const tickers = masterPortfolio.map(s=>s.ticker);
-  const prices = await fetchMultiplePrices(tickers);
-  let totalCost=0, totalVal=0, totalPnl=0;
-  let rows = masterPortfolio.map(s => {
-    const price = prices[s.ticker];
-    const cost = s.avgPrice * s.shares;
-    const val = price ? price * s.shares : null;
-    const pnl = val ? val - cost : null;
-    const ret = pnl ? (pnl/cost)*100 : null;
-    totalCost += cost;
-    if (val) totalVal += val;
-    if (pnl) totalPnl += pnl;
-    const signal = getSignalBadge(ret);
-    const priceStr = price ? '
-  tbody.innerHTML = rows.join('');
-  const totalRet = totalCost > 0 ? ((totalVal-totalCost)/totalCost)*100 : 0;
-  statsEl.innerHTML =
-    '<div class="card"><h3>Total Cost Basis</h3><div class="big">$'+totalCost.toFixed(2)+'</div></div>' +
-    '<div class="card"><h3>Market Value</h3><div class="big">$'+(totalVal||0).toFixed(2)+'</div><div class="change '+(totalPnl>=0?'green':'red')+'">'+(totalPnl>=0?'+':'')+totalPnl.toFixed(2)+'</div></div>' +
-    '<div class="card"><h3>Total Return</h3><div class="big '+(totalRet>=0?'green':'red')+'">'+(totalRet>=0?'+':'')+totalRet.toFixed(2)+'%</div></div>';
-}
-
-function getSignalBadge(ret) {
-  if (ret===null) return '<span class="badge neutral">N/A</span>';
-  if (ret > 15)   return '<span class="badge strong-buy">Strong Buy</span>';
-  if (ret > 5)    return '<span class="badge buy">Buy</span>';
-  if (ret > -5)   return '<span class="badge neutral">Neutral</span>';
-  if (ret > -15)  return '<span class="badge sell">Sell</span>';
-  return '<span class="badge strong-sell">Strong Sell</span>';
+  tbody.innerHTML = "<tr><td colspan=\"9\" class=\"no-data\">Fetching prices...</td></tr>";
+  var tickers = masterPortfolio.map(function(s) { return s.ticker; });
+  fetchMultiple(tickers).then(function(prices) {
+    var totalCost = 0, totalVal = 0, totalPnl = 0;
+    var rows = masterPortfolio.map(function(s) {
+      var price = prices[s.ticker];
+      var cost = s.avgPrice * s.shares;
+      var val = price ? price * s.shares : null;
+      var pnl = val !== null ? val - cost : null;
+      var ret = pnl !== null && cost ? (pnl / cost) * 100 : null;
+      totalCost += cost;
+      if (val) totalVal += val;
+      if (pnl) totalPnl += pnl;
+      var sig = getSignalBadge(ret);
+      var priceStr = price ? "$" + price.toFixed(2) : "N/A";
+      var valStr = val ? "$" + val.toFixed(2) : "N/A";
+      var pnlStr = fusd(pnl);
+      var retStr = ret !== null ? fpct(ret) : "N/A";
+      var pnlCls = pnl !== null && pnl >= 0 ? "green" : "red";
+      var retCls = ret !== null && ret >= 0 ? "green" : "red";
+      return "<tr>" +
+        "<td><span class=\"ticker-tag\">" + s.ticker + "</span></td>" +
+        "<td>" + s.shares + "</td>" +
+        "<td>$" + s.avgPrice.toFixed(2) + "</td>" +
+        "<td>" + priceStr + "</td>" +
+        "<td>" + valStr + "</td>" +
+        "<td class=\"" + pnlCls + "\">" + pnlStr + "</td>" +
+        "<td class=\"" + retCls + "\">" + retStr + "</td>" +
+        "<td>" + sig + "</td>" +
+        "<td><button class=\"btn btn-danger\" onclick=\"removeMasterStock(''+" + s.ticker + "'')\" >X</button></td>" +
+        "</tr>";
+    });
+    tbody.innerHTML = rows.join("");
+    var totalRet = totalCost > 0 ? ((totalVal - totalCost) / totalCost) * 100 : 0;
+    statsEl.innerHTML =
+      "<div class=\"card\"><h3>Cost Basis</h3><div class=\"big\">$" + totalCost.toFixed(2) + "</div></div>" +
+      "<div class=\"card\"><h3>Market Value</h3><div class=\"big\">$" + totalVal.toFixed(2) + "</div><div class=\"change " + clr(totalPnl) + "\">" + fusd(totalPnl) + "</div></div>" +
+      "<div class=\"card\"><h3>Total Return</h3><div class=\"big " + clr(totalRet) + "\">" + fpct(totalRet) + "</div></div>";
+  });
 }
 
 window.saveMasterPortfolio = function() {
   saveMasterLocal();
-  const data = {
-    owner: 'lUIZhMACEDO',
-    portfolio: masterPortfolio,
-    updated: new Date().toISOString()
-  };
-  const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download='master_portfolio.json'; a.click();
+  var data = {owner:"lUIZhMACEDO", portfolio:masterPortfolio, updated:new Date().toISOString()};
+  var blob = new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a"); a.href = url; a.download = "master_portfolio.json"; a.click();
   URL.revokeObjectURL(url);
-  showToast('Portfolio saved! Upload master_portfolio.json to repo to update email reports.');
-}
+  showToast("Saved! Upload master_portfolio.json to quant-research-system/data/ to update email reports.");
+};
 
 window.exportPortfolio = function() {
-  const blob = new Blob([JSON.stringify({portfolio:masterPortfolio},null,2)],{type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download='portfolio_export.json'; a.click();
+  var blob = new Blob([JSON.stringify({portfolio:masterPortfolio},null,2)],{type:"application/json"});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a"); a.href = url; a.download = "portfolio_export.json"; a.click();
   URL.revokeObjectURL(url);
-}
+};
 
-// ─── SIGNALS ───────────────────────────────────────────────────────────────
-const UNIVERSE = ['AAPL','MSFT','GOOGL','AMZN','NVDA','META','TSLA','RKLB','ASTS','LUNR','KTOS','ARM','SQ','ADYEN'];
+// Signals
+var signalRowsData = [];
 
-async function renderSignals() {
-  const tbody = document.getElementById('signalsTable');
-  tbody.innerHTML = '<tr><td colspan="8" class="no-data">Fetching live data...</td></tr>';
-  const tickers = [...new Set([...UNIVERSE, ...masterPortfolio.map(s=>s.ticker)])];
-  const prices = await fetchMultiplePrices(tickers);
-  let rows = tickers.map(t => {
-    const price = prices[t];
-    const rsi = (Math.random()*60+20).toFixed(1);
-    const macd = (Math.random()*4-2).toFixed(3);
-    const mom = ((Math.random()*20-8)).toFixed(2);
-    const volz = (Math.random()*3).toFixed(2);
-    const quintile = Math.ceil(Math.random()*5);
-    const signal = rsi<30?'strong-buy':rsi<45?'buy':rsi>70?'strong-sell':rsi>60?'sell':'neutral';
-    return { t, price, rsi, macd, mom, volz, quintile, signal };
+function renderSignals() {
+  var tbody = document.getElementById("signalsTable");
+  tbody.innerHTML = "<tr><td colspan=\"8\" class=\"no-data\">Fetching live data...</td></tr>";
+  var allTickers = UNIVERSE.slice();
+  masterPortfolio.forEach(function(s) { if (allTickers.indexOf(s.ticker) < 0) allTickers.push(s.ticker); });
+  fetchMultiple(allTickers).then(function(prices) {
+    signalRowsData = allTickers.map(function(t) {
+      var price = prices[t];
+      var rsi = (Math.random() * 60 + 20).toFixed(1);
+      var macd = (Math.random() * 4 - 2).toFixed(3);
+      var mom = (Math.random() * 20 - 8).toFixed(2);
+      var volz = (Math.random() * 3).toFixed(2);
+      var quintile = Math.ceil(Math.random() * 5);
+      var sig = rsi < 30 ? "strong-buy" : rsi < 45 ? "buy" : rsi > 70 ? "strong-sell" : rsi > 60 ? "sell" : "neutral";
+      return {t:t, price:price, rsi:rsi, macd:macd, mom:mom, volz:volz, quintile:quintile, signal:sig};
+    });
+    renderSignalRows(signalRowsData);
+    document.getElementById("signalUpdated").textContent = "Updated: " + new Date().toLocaleTimeString();
   });
-  window._signalRows = rows;
-  renderSignalRows(rows);
-  document.getElementById('signalUpdated').textContent = 'Updated: '+new Date().toLocaleTimeString();
 }
 
 function renderSignalRows(rows) {
-  const tbody = document.getElementById('signalsTable');
-  tbody.innerHTML = rows.map(r =>
-    '<tr data-signal="'+r.signal+'">' +
-    '<td><span class="ticker-tag">'+r.t+'</span></td>' +
-    '<td>'+(r.price?'$'+r.price.toFixed(2):'—')+'</td>' +
-    '<td class="'+(r.rsi<40?'green':r.rsi>60?'red':'')+'">' +r.rsi+'</td>' +
-    '<td class="'+(r.macd>0?'green':'red')+'">'+r.macd+'</td>' +
-    '<td class="'+(r.mom>0?'green':'red')+'">'+(r.mom>0?'+':'')+r.mom+'%</td>' +
-    '<td>'+r.volz+'</td>' +
-    '<td><span class="badge '+r.signal+'">'+r.signal.replace('-',' ').replace(/w/g,c=>c.toUpperCase())+'</span></td>' +
-    '<td>'+'&#9733;'.repeat(r.quintile)+'&#9734;'.repeat(5-r.quintile)+'</td>' +
-    '</tr>'
-  ).join('');
+  var tbody = document.getElementById("signalsTable");
+  tbody.innerHTML = rows.map(function(r) {
+    var sigLabel = r.signal.replace(/-/g, " ").replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+    var pStr = r.price ? "$" + r.price.toFixed(2) : "N/A";
+    var stars = "";
+    for (var i = 0; i < r.quintile; i++) stars += "&#9733;";
+    for (var i = r.quintile; i < 5; i++) stars += "&#9734;";
+    return "<tr data-signal=\"" + r.signal + "\">" +
+      "<td><span class=\"ticker-tag\">" + r.t + "</span></td>" +
+      "<td>" + pStr + "</td>" +
+      "<td class=\"" + (r.rsi < 40 ? "green" : r.rsi > 60 ? "red" : "") + "\">" + r.rsi + "</td>" +
+      "<td class=\"" + (r.macd > 0 ? "green" : "red") + "\">" + r.macd + "</td>" +
+      "<td class=\"" + (r.mom > 0 ? "green" : "red") + "\">" + (r.mom > 0 ? "+" : "") + r.mom + "%</td>" +
+      "<td>" + r.volz + "</td>" +
+      "<td><span class=\"badge " + r.signal + "\">" + sigLabel + "</span></td>" +
+      "<td>" + stars + "</td>" +
+      "</tr>";
+  }).join("");
 }
 
 window.filterSignals = function(filter) {
-  if (!window._signalRows) return;
-  const rows = filter==='all' ? window._signalRows : window._signalRows.filter(r=>r.signal===filter);
+  var rows = filter === "all" ? signalRowsData : signalRowsData.filter(function(r) { return r.signal === filter; });
   renderSignalRows(rows);
+};
+
+// Private Exposure
+function renderPrivate() {
+  var el = document.getElementById("privateCards");
+  el.innerHTML = PRIVATE_DATA.map(function(co) {
+    var score = 0;
+    var wTotal = 0;
+    var keys = Object.keys(co.w);
+    keys.forEach(function(t) {
+      if (priceCache[t]) {
+        score += co.w[t] * (Math.random() * 0.1 + 0.95);
+        wTotal += co.w[t];
+      }
+    });
+    var proxyTags = co.proxies.map(function(t) {
+      return "<span class=\"ticker-tag\">" + t + "</span>";
+    }).join(" ");
+    return "<div class=\"private-card\">" +
+      "<h4 style=\"color:" + co.color + "\">" + co.name + "</h4>" +
+      "<div class=\"val\">" + co.val + " <small style=\"font-size:.7rem;color:var(--muted)\">" + co.round + " &bull; " + co.date + "</small></div>" +
+      "<div class=\"proxy\">Proxies: " + proxyTags + "</div>" +
+      "<div style=\"margin-top:8px;font-size:.85rem;\">Exposure Score: <strong style=\"color:" + co.color + "\">" + (score * 100).toFixed(1) + "</strong></div>" +
+      "</div>";
+  }).join("");
 }
 
-// ─── PRIVATE EXPOSURE ──────────────────────────────────────────────────────
-async function renderPrivate() {
-  const el = document.getElementById('privateCards');
-  const allProxies = [...new Set(PRIVATE_DATA.flatMap(p=>p.proxies))];
-  const prices = await fetchMultiplePrices(allProxies);
-  el.innerHTML = PRIVATE_DATA.map(co => {
-    const score = Object.entries(co.weights).reduce((acc,[t,w]) => {
-      if (prices[t]) acc += w * (Math.random()*0.1+0.95);
-      return acc;
-    }, 0);
-    return '<div class="private-card">' +
-      '<h4 style="color:'+co.color+'">'+co.name+'</h4>' +
-      '<div class="val">'+co.valuation+' <small style="font-size:.7rem;color:var(--muted);">'+co.round+' · '+co.date+'</small></div>' +
-      '<div class="proxy">Proxies: '+co.proxies.map(t=>'<span class="ticker-tag">'+t+'</span>').join(' ')+'</div>' +
-      '<div style="margin-top:8px;font-size:.85rem;">Exposure Score: <strong style="color:'+co.color+';">'+(score*100).toFixed(1)+'</strong></div>' +
-      '</div>';
-  }).join('');
-}
-
-// ─── USER REGISTRATION ─────────────────────────────────────────────────────
+// User Registration
 function initRegisterForm() {
-  const c = document.getElementById('userStocksContainer');
-  c.innerHTML = '';
+  var c = document.getElementById("userStocksContainer");
+  c.innerHTML = "";
   userStockCount = 0;
   addUserStock();
 }
 
 window.addUserStock = function() {
-  const c = document.getElementById('userStocksContainer');
-  const id = userStockCount++;
-  const row = document.createElement('div');
-  row.className = 'ticker-row';
-  row.id = 'urow_'+id;
+  var c = document.getElementById("userStocksContainer");
+  var id = userStockCount++;
+  var row = document.createElement("div");
+  row.className = "ticker-row";
+  row.id = "urow_" + id;
   row.innerHTML =
-    '<input placeholder="Ticker" id="u_t_'+id+'" style="max-width:100px;text-transform:uppercase"/>'+
-    '<input type="number" placeholder="Avg Price $" id="u_p_'+id+'" style="max-width:130px"/>'+
-    '<input type="number" placeholder="Shares" id="u_s_'+id+'" style="max-width:100px"/>'+
-    '<button class="btn btn-danger btn-sm" onclick="document.getElementById('urow_'+id+'').remove()">✕</button>';
+    "<input placeholder=\"Ticker\" id=\"u_t_" + id + "\" style=\"max-width:100px;text-transform:uppercase\"/>" +
+    "<input type=\"number\" placeholder=\"Avg Price $\" id=\"u_p_" + id + "\" style=\"max-width:130px\"/>" +
+    "<input type=\"number\" placeholder=\"Shares\" id=\"u_s_" + id + "\" style=\"max-width:100px\"/>" +
+    "<button class=\"btn btn-danger btn-sm\" onclick=\"document.getElementById('urow_" + id + "').remove()\">X</button>";
   c.appendChild(row);
-}
+};
 
 window.registerUser = function() {
-  const name = document.getElementById('r_name').value.trim();
-  const email = document.getElementById('r_email').value.trim();
-  const alertEl = document.getElementById('registerAlert');
-
-  if (!name||!email) {
-    alertEl.innerHTML = '<div class="alert alert-error">Please enter your name and email.</div>';
+  var name = document.getElementById("r_name").value.trim();
+  var email = document.getElementById("r_email").value.trim();
+  var alertEl = document.getElementById("registerAlert");
+  if (!name || !email) {
+    alertEl.innerHTML = "<div class=\"alert alert-error\">Please enter your name and email.</div>";
     return;
   }
-  if (!/^[^@]+@[^@]+.[^@]+$/.test(email)) {
-    alertEl.innerHTML = '<div class="alert alert-error">Please enter a valid email address.</div>';
+  if (!/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
+    alertEl.innerHTML = "<div class=\"alert alert-error\">Please enter a valid email address.</div>";
     return;
   }
-
-  const stocks = [];
-  document.querySelectorAll('#userStocksContainer .ticker-row').forEach(row => {
-    const id = row.id.replace('urow_','');
-    const t = document.getElementById('u_t_'+id)?.value.trim().toUpperCase();
-    const p = parseFloat(document.getElementById('u_p_'+id)?.value);
-    const s = parseFloat(document.getElementById('u_s_'+id)?.value);
-    if (t && !isNaN(p) && !isNaN(s)) stocks.push({ticker:t,avgPrice:p,shares:s});
-  });
-
+  var stocks = [];
+  var rows = document.querySelectorAll("#userStocksContainer .ticker-row");
+  for (var i = 0; i < rows.length; i++) {
+    var rowId = rows[i].id.replace("urow_", "");
+    var tEl = document.getElementById("u_t_" + rowId);
+    var pEl = document.getElementById("u_p_" + rowId);
+    var sEl = document.getElementById("u_s_" + rowId);
+    if (tEl && pEl && sEl) {
+      var t = tEl.value.trim().toUpperCase();
+      var p = parseFloat(pEl.value);
+      var s = parseFloat(sEl.value);
+      if (t && !isNaN(p) && !isNaN(s)) stocks.push({ticker:t, avgPrice:p, shares:s});
+    }
+  }
   if (!stocks.length) {
-    alertEl.innerHTML = '<div class="alert alert-error">Please add at least one stock holding.</div>';
+    alertEl.innerHTML = "<div class=\"alert alert-error\">Please add at least one stock holding.</div>";
     return;
   }
-
-  if (registeredUsers.find(u=>u.email===email)) {
-    const u = registeredUsers.find(u=>u.email===email);
-    u.name=name; u.stocks=stocks; u.updated=new Date().toISOString();
-    showToast('Portfolio updated for '+email);
+  var existingIdx = -1;
+  for (var i = 0; i < registeredUsers.length; i++) {
+    if (registeredUsers[i].email === email) { existingIdx = i; break; }
+  }
+  if (existingIdx >= 0) {
+    registeredUsers[existingIdx].name = name;
+    registeredUsers[existingIdx].stocks = stocks;
+    registeredUsers[existingIdx].updated = new Date().toISOString();
   } else {
-    registeredUsers.push({name,email,stocks,registered:new Date().toISOString()});
-    showToast('Subscribed! You will receive morning reports at '+email);
+    registeredUsers.push({name:name, email:email, stocks:stocks, registered:new Date().toISOString()});
   }
-
-  localStorage.setItem('registeredUsers',JSON.stringify(registeredUsers));
-  alertEl.innerHTML = '<div class="alert alert-success">✓ You are subscribed! Daily reports will be sent to <strong>'+email+'</strong> every morning.</div>';
-
-  // Download user data file for repo upload
-  const userData = { users: registeredUsers, updated: new Date().toISOString() };
-  const blob = new Blob([JSON.stringify(userData,null,2)],{type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download='users.json'; a.click();
+  localStorage.setItem("registeredUsers", JSON.stringify(registeredUsers));
+  alertEl.innerHTML = "<div class=\"alert alert-success\">Subscribed! Daily reports will be sent to <strong>" + email + "</strong> every morning.</div>";
+  var userData = {users: registeredUsers, updated: new Date().toISOString()};
+  var blob = new Blob([JSON.stringify(userData,null,2)], {type:"application/json"});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a"); a.href = url; a.download = "users.json"; a.click();
   URL.revokeObjectURL(url);
-}
+};
 
-// ─── USERS TABLE ───────────────────────────────────────────────────────────
+// Users Table
 function renderUsers() {
-  const tbody = document.getElementById('usersTable');
-  const countEl = document.getElementById('usersCount');
+  var tbody = document.getElementById("usersTable");
+  var countEl = document.getElementById("usersCount");
   if (!registeredUsers.length) {
-    tbody.innerHTML = '<tr><td colspan="5" class="no-data">No users registered yet.</td></tr>';
-    countEl.textContent = '0 users';
+    tbody.innerHTML = "<tr><td colspan=\"5\" class=\"no-data\">No users registered yet.</td></tr>";
+    countEl.textContent = "0 users";
     return;
   }
-  countEl.textContent = registeredUsers.length + ' user' + (registeredUsers.length===1?'':'s');
-  tbody.innerHTML = registeredUsers.map((u,i) =>
-    '<tr>'+
-    '<td>'+u.name+'</td>'+
-    '<td>'+u.email+'</td>'+
-    '<td>'+u.stocks.map(s=>'<span class="ticker-tag">'+s.ticker+'</span>').join(' ')+'</td>'+
-    '<td>'+(u.registered?new Date(u.registered).toLocaleDateString():'—')+'</td>'+
-    '<td><button class="btn btn-danger btn-sm" onclick="removeUser('+i+')">Remove</button></td>'+
-    '</tr>'
-  ).join('');
+  countEl.textContent = registeredUsers.length + " user" + (registeredUsers.length === 1 ? "" : "s");
+  tbody.innerHTML = registeredUsers.map(function(u, idx) {
+    var tags = u.stocks.map(function(s) { return "<span class=\"ticker-tag\">" + s.ticker + "</span>"; }).join(" ");
+    var dateStr = u.registered ? new Date(u.registered).toLocaleDateString() : "N/A";
+    return "<tr>" +
+      "<td>" + u.name + "</td>" +
+      "<td>" + u.email + "</td>" +
+      "<td>" + tags + "</td>" +
+      "<td>" + dateStr + "</td>" +
+      "<td><button class=\"btn btn-danger btn-sm\" onclick=\"removeUser(" + idx + ")\">Remove</button></td>" +
+      "</tr>";
+  }).join("");
 }
 
 window.removeUser = function(i) {
-  registeredUsers.splice(i,1);
-  localStorage.setItem('registeredUsers',JSON.stringify(registeredUsers));
+  registeredUsers.splice(i, 1);
+  localStorage.setItem("registeredUsers", JSON.stringify(registeredUsers));
   renderUsers();
-}
+};
 
-// ─── TOAST ─────────────────────────────────────────────────────────────────
+// Toast notification
 function showToast(msg) {
-  const t = document.createElement('div');
-  t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#238636;color:#fff;padding:12px 20px;border-radius:8px;font-size:.88rem;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.5);';
+  var t = document.createElement("div");
+  t.style.cssText = "position:fixed;bottom:24px;right:24px;background:#238636;color:#fff;padding:12px 20px;border-radius:8px;font-size:.88rem;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.5);";
   t.textContent = msg;
   document.body.appendChild(t);
-  setTimeout(()=>t.remove(),4000);
+  setTimeout(function() { t.remove(); }, 4000);
 }
 
-// ─── INIT ──────────────────────────────────────────────────────────────────
-document.getElementById('lastUpdated').textContent = 'Last updated: '+new Date().toLocaleString();
+// Init
+document.getElementById("lastUpdated").textContent = "Last updated: " + new Date().toLocaleString();
 renderMaster();
 renderPrivate();
-</script>
-</body>
-</html>
- + price.toFixed(2) : 'N/A';
-    const valStr = val ? '
-  tbody.innerHTML = rows.join('');
-  const totalRet = totalCost > 0 ? ((totalVal-totalCost)/totalCost)*100 : 0;
-  statsEl.innerHTML =
-    '<div class="card"><h3>Total Cost Basis</h3><div class="big">$'+totalCost.toFixed(2)+'</div></div>' +
-    '<div class="card"><h3>Market Value</h3><div class="big">$'+(totalVal||0).toFixed(2)+'</div><div class="change '+(totalPnl>=0?'green':'red')+'">'+(totalPnl>=0?'+':'')+totalPnl.toFixed(2)+'</div></div>' +
-    '<div class="card"><h3>Total Return</h3><div class="big '+(totalRet>=0?'green':'red')+'">'+(totalRet>=0?'+':'')+totalRet.toFixed(2)+'%</div></div>';
-}
 
-function getSignalBadge(ret) {
-  if (ret===null) return '<span class="badge neutral">N/A</span>';
-  if (ret > 15)   return '<span class="badge strong-buy">Strong Buy</span>';
-  if (ret > 5)    return '<span class="badge buy">Buy</span>';
-  if (ret > -5)   return '<span class="badge neutral">Neutral</span>';
-  if (ret > -15)  return '<span class="badge sell">Sell</span>';
-  return '<span class="badge strong-sell">Strong Sell</span>';
-}
-
-window.saveMasterPortfolio = function() {
-  saveMasterLocal();
-  const data = {
-    owner: 'lUIZhMACEDO',
-    portfolio: masterPortfolio,
-    updated: new Date().toISOString()
-  };
-  const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download='master_portfolio.json'; a.click();
-  URL.revokeObjectURL(url);
-  showToast('Portfolio saved! Upload master_portfolio.json to repo to update email reports.');
-}
-
-window.exportPortfolio = function() {
-  const blob = new Blob([JSON.stringify({portfolio:masterPortfolio},null,2)],{type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download='portfolio_export.json'; a.click();
-  URL.revokeObjectURL(url);
-}
-
-// ─── SIGNALS ───────────────────────────────────────────────────────────────
-const UNIVERSE = ['AAPL','MSFT','GOOGL','AMZN','NVDA','META','TSLA','RKLB','ASTS','LUNR','KTOS','ARM','SQ','ADYEN'];
-
-async function renderSignals() {
-  const tbody = document.getElementById('signalsTable');
-  tbody.innerHTML = '<tr><td colspan="8" class="no-data">Fetching live data...</td></tr>';
-  const tickers = [...new Set([...UNIVERSE, ...masterPortfolio.map(s=>s.ticker)])];
-  const prices = await fetchMultiplePrices(tickers);
-  let rows = tickers.map(t => {
-    const price = prices[t];
-    const rsi = (Math.random()*60+20).toFixed(1);
-    const macd = (Math.random()*4-2).toFixed(3);
-    const mom = ((Math.random()*20-8)).toFixed(2);
-    const volz = (Math.random()*3).toFixed(2);
-    const quintile = Math.ceil(Math.random()*5);
-    const signal = rsi<30?'strong-buy':rsi<45?'buy':rsi>70?'strong-sell':rsi>60?'sell':'neutral';
-    return { t, price, rsi, macd, mom, volz, quintile, signal };
-  });
-  window._signalRows = rows;
-  renderSignalRows(rows);
-  document.getElementById('signalUpdated').textContent = 'Updated: '+new Date().toLocaleTimeString();
-}
-
-function renderSignalRows(rows) {
-  const tbody = document.getElementById('signalsTable');
-  tbody.innerHTML = rows.map(r =>
-    '<tr data-signal="'+r.signal+'">' +
-    '<td><span class="ticker-tag">'+r.t+'</span></td>' +
-    '<td>'+(r.price?'$'+r.price.toFixed(2):'—')+'</td>' +
-    '<td class="'+(r.rsi<40?'green':r.rsi>60?'red':'')+'">' +r.rsi+'</td>' +
-    '<td class="'+(r.macd>0?'green':'red')+'">'+r.macd+'</td>' +
-    '<td class="'+(r.mom>0?'green':'red')+'">'+(r.mom>0?'+':'')+r.mom+'%</td>' +
-    '<td>'+r.volz+'</td>' +
-    '<td><span class="badge '+r.signal+'">'+r.signal.replace('-',' ').replace(/w/g,c=>c.toUpperCase())+'</span></td>' +
-    '<td>'+'&#9733;'.repeat(r.quintile)+'&#9734;'.repeat(5-r.quintile)+'</td>' +
-    '</tr>'
-  ).join('');
-}
-
-window.filterSignals = function(filter) {
-  if (!window._signalRows) return;
-  const rows = filter==='all' ? window._signalRows : window._signalRows.filter(r=>r.signal===filter);
-  renderSignalRows(rows);
-}
-
-// ─── PRIVATE EXPOSURE ──────────────────────────────────────────────────────
-async function renderPrivate() {
-  const el = document.getElementById('privateCards');
-  const allProxies = [...new Set(PRIVATE_DATA.flatMap(p=>p.proxies))];
-  const prices = await fetchMultiplePrices(allProxies);
-  el.innerHTML = PRIVATE_DATA.map(co => {
-    const score = Object.entries(co.weights).reduce((acc,[t,w]) => {
-      if (prices[t]) acc += w * (Math.random()*0.1+0.95);
-      return acc;
-    }, 0);
-    return '<div class="private-card">' +
-      '<h4 style="color:'+co.color+'">'+co.name+'</h4>' +
-      '<div class="val">'+co.valuation+' <small style="font-size:.7rem;color:var(--muted);">'+co.round+' · '+co.date+'</small></div>' +
-      '<div class="proxy">Proxies: '+co.proxies.map(t=>'<span class="ticker-tag">'+t+'</span>').join(' ')+'</div>' +
-      '<div style="margin-top:8px;font-size:.85rem;">Exposure Score: <strong style="color:'+co.color+';">'+(score*100).toFixed(1)+'</strong></div>' +
-      '</div>';
-  }).join('');
-}
-
-// ─── USER REGISTRATION ─────────────────────────────────────────────────────
-function initRegisterForm() {
-  const c = document.getElementById('userStocksContainer');
-  c.innerHTML = '';
-  userStockCount = 0;
-  addUserStock();
-}
-
-window.addUserStock = function() {
-  const c = document.getElementById('userStocksContainer');
-  const id = userStockCount++;
-  const row = document.createElement('div');
-  row.className = 'ticker-row';
-  row.id = 'urow_'+id;
-  row.innerHTML =
-    '<input placeholder="Ticker" id="u_t_'+id+'" style="max-width:100px;text-transform:uppercase"/>'+
-    '<input type="number" placeholder="Avg Price $" id="u_p_'+id+'" style="max-width:130px"/>'+
-    '<input type="number" placeholder="Shares" id="u_s_'+id+'" style="max-width:100px"/>'+
-    '<button class="btn btn-danger btn-sm" onclick="document.getElementById('urow_'+id+'').remove()">✕</button>';
-  c.appendChild(row);
-}
-
-window.registerUser = function() {
-  const name = document.getElementById('r_name').value.trim();
-  const email = document.getElementById('r_email').value.trim();
-  const alertEl = document.getElementById('registerAlert');
-
-  if (!name||!email) {
-    alertEl.innerHTML = '<div class="alert alert-error">Please enter your name and email.</div>';
-    return;
-  }
-  if (!/^[^@]+@[^@]+.[^@]+$/.test(email)) {
-    alertEl.innerHTML = '<div class="alert alert-error">Please enter a valid email address.</div>';
-    return;
-  }
-
-  const stocks = [];
-  document.querySelectorAll('#userStocksContainer .ticker-row').forEach(row => {
-    const id = row.id.replace('urow_','');
-    const t = document.getElementById('u_t_'+id)?.value.trim().toUpperCase();
-    const p = parseFloat(document.getElementById('u_p_'+id)?.value);
-    const s = parseFloat(document.getElementById('u_s_'+id)?.value);
-    if (t && !isNaN(p) && !isNaN(s)) stocks.push({ticker:t,avgPrice:p,shares:s});
-  });
-
-  if (!stocks.length) {
-    alertEl.innerHTML = '<div class="alert alert-error">Please add at least one stock holding.</div>';
-    return;
-  }
-
-  if (registeredUsers.find(u=>u.email===email)) {
-    const u = registeredUsers.find(u=>u.email===email);
-    u.name=name; u.stocks=stocks; u.updated=new Date().toISOString();
-    showToast('Portfolio updated for '+email);
-  } else {
-    registeredUsers.push({name,email,stocks,registered:new Date().toISOString()});
-    showToast('Subscribed! You will receive morning reports at '+email);
-  }
-
-  localStorage.setItem('registeredUsers',JSON.stringify(registeredUsers));
-  alertEl.innerHTML = '<div class="alert alert-success">✓ You are subscribed! Daily reports will be sent to <strong>'+email+'</strong> every morning.</div>';
-
-  // Download user data file for repo upload
-  const userData = { users: registeredUsers, updated: new Date().toISOString() };
-  const blob = new Blob([JSON.stringify(userData,null,2)],{type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download='users.json'; a.click();
-  URL.revokeObjectURL(url);
-}
-
-// ─── USERS TABLE ───────────────────────────────────────────────────────────
-function renderUsers() {
-  const tbody = document.getElementById('usersTable');
-  const countEl = document.getElementById('usersCount');
-  if (!registeredUsers.length) {
-    tbody.innerHTML = '<tr><td colspan="5" class="no-data">No users registered yet.</td></tr>';
-    countEl.textContent = '0 users';
-    return;
-  }
-  countEl.textContent = registeredUsers.length + ' user' + (registeredUsers.length===1?'':'s');
-  tbody.innerHTML = registeredUsers.map((u,i) =>
-    '<tr>'+
-    '<td>'+u.name+'</td>'+
-    '<td>'+u.email+'</td>'+
-    '<td>'+u.stocks.map(s=>'<span class="ticker-tag">'+s.ticker+'</span>').join(' ')+'</td>'+
-    '<td>'+(u.registered?new Date(u.registered).toLocaleDateString():'—')+'</td>'+
-    '<td><button class="btn btn-danger btn-sm" onclick="removeUser('+i+')">Remove</button></td>'+
-    '</tr>'
-  ).join('');
-}
-
-window.removeUser = function(i) {
-  registeredUsers.splice(i,1);
-  localStorage.setItem('registeredUsers',JSON.stringify(registeredUsers));
-  renderUsers();
-}
-
-// ─── TOAST ─────────────────────────────────────────────────────────────────
-function showToast(msg) {
-  const t = document.createElement('div');
-  t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#238636;color:#fff;padding:12px 20px;border-radius:8px;font-size:.88rem;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.5);';
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(()=>t.remove(),4000);
-}
-
-// ─── INIT ──────────────────────────────────────────────────────────────────
-document.getElementById('lastUpdated').textContent = 'Last updated: '+new Date().toLocaleString();
-renderMaster();
-renderPrivate();
-</script>
-</body>
-</html>
- + val.toFixed(2) : 'N/A';
-    const pnlSign = pnl !== null && pnl >= 0 ? '+' : '';
-    const pnlStr = pnl !== null ? pnlSign + '
-  tbody.innerHTML = rows.join('');
-  const totalRet = totalCost > 0 ? ((totalVal-totalCost)/totalCost)*100 : 0;
-  statsEl.innerHTML =
-    '<div class="card"><h3>Total Cost Basis</h3><div class="big">$'+totalCost.toFixed(2)+'</div></div>' +
-    '<div class="card"><h3>Market Value</h3><div class="big">$'+(totalVal||0).toFixed(2)+'</div><div class="change '+(totalPnl>=0?'green':'red')+'">'+(totalPnl>=0?'+':'')+totalPnl.toFixed(2)+'</div></div>' +
-    '<div class="card"><h3>Total Return</h3><div class="big '+(totalRet>=0?'green':'red')+'">'+(totalRet>=0?'+':'')+totalRet.toFixed(2)+'%</div></div>';
-}
-
-function getSignalBadge(ret) {
-  if (ret===null) return '<span class="badge neutral">N/A</span>';
-  if (ret > 15)   return '<span class="badge strong-buy">Strong Buy</span>';
-  if (ret > 5)    return '<span class="badge buy">Buy</span>';
-  if (ret > -5)   return '<span class="badge neutral">Neutral</span>';
-  if (ret > -15)  return '<span class="badge sell">Sell</span>';
-  return '<span class="badge strong-sell">Strong Sell</span>';
-}
-
-window.saveMasterPortfolio = function() {
-  saveMasterLocal();
-  const data = {
-    owner: 'lUIZhMACEDO',
-    portfolio: masterPortfolio,
-    updated: new Date().toISOString()
-  };
-  const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download='master_portfolio.json'; a.click();
-  URL.revokeObjectURL(url);
-  showToast('Portfolio saved! Upload master_portfolio.json to repo to update email reports.');
-}
-
-window.exportPortfolio = function() {
-  const blob = new Blob([JSON.stringify({portfolio:masterPortfolio},null,2)],{type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download='portfolio_export.json'; a.click();
-  URL.revokeObjectURL(url);
-}
-
-// ─── SIGNALS ───────────────────────────────────────────────────────────────
-const UNIVERSE = ['AAPL','MSFT','GOOGL','AMZN','NVDA','META','TSLA','RKLB','ASTS','LUNR','KTOS','ARM','SQ','ADYEN'];
-
-async function renderSignals() {
-  const tbody = document.getElementById('signalsTable');
-  tbody.innerHTML = '<tr><td colspan="8" class="no-data">Fetching live data...</td></tr>';
-  const tickers = [...new Set([...UNIVERSE, ...masterPortfolio.map(s=>s.ticker)])];
-  const prices = await fetchMultiplePrices(tickers);
-  let rows = tickers.map(t => {
-    const price = prices[t];
-    const rsi = (Math.random()*60+20).toFixed(1);
-    const macd = (Math.random()*4-2).toFixed(3);
-    const mom = ((Math.random()*20-8)).toFixed(2);
-    const volz = (Math.random()*3).toFixed(2);
-    const quintile = Math.ceil(Math.random()*5);
-    const signal = rsi<30?'strong-buy':rsi<45?'buy':rsi>70?'strong-sell':rsi>60?'sell':'neutral';
-    return { t, price, rsi, macd, mom, volz, quintile, signal };
-  });
-  window._signalRows = rows;
-  renderSignalRows(rows);
-  document.getElementById('signalUpdated').textContent = 'Updated: '+new Date().toLocaleTimeString();
-}
-
-function renderSignalRows(rows) {
-  const tbody = document.getElementById('signalsTable');
-  tbody.innerHTML = rows.map(r =>
-    '<tr data-signal="'+r.signal+'">' +
-    '<td><span class="ticker-tag">'+r.t+'</span></td>' +
-    '<td>'+(r.price?'$'+r.price.toFixed(2):'—')+'</td>' +
-    '<td class="'+(r.rsi<40?'green':r.rsi>60?'red':'')+'">' +r.rsi+'</td>' +
-    '<td class="'+(r.macd>0?'green':'red')+'">'+r.macd+'</td>' +
-    '<td class="'+(r.mom>0?'green':'red')+'">'+(r.mom>0?'+':'')+r.mom+'%</td>' +
-    '<td>'+r.volz+'</td>' +
-    '<td><span class="badge '+r.signal+'">'+r.signal.replace('-',' ').replace(/w/g,c=>c.toUpperCase())+'</span></td>' +
-    '<td>'+'&#9733;'.repeat(r.quintile)+'&#9734;'.repeat(5-r.quintile)+'</td>' +
-    '</tr>'
-  ).join('');
-}
-
-window.filterSignals = function(filter) {
-  if (!window._signalRows) return;
-  const rows = filter==='all' ? window._signalRows : window._signalRows.filter(r=>r.signal===filter);
-  renderSignalRows(rows);
-}
-
-// ─── PRIVATE EXPOSURE ──────────────────────────────────────────────────────
-async function renderPrivate() {
-  const el = document.getElementById('privateCards');
-  const allProxies = [...new Set(PRIVATE_DATA.flatMap(p=>p.proxies))];
-  const prices = await fetchMultiplePrices(allProxies);
-  el.innerHTML = PRIVATE_DATA.map(co => {
-    const score = Object.entries(co.weights).reduce((acc,[t,w]) => {
-      if (prices[t]) acc += w * (Math.random()*0.1+0.95);
-      return acc;
-    }, 0);
-    return '<div class="private-card">' +
-      '<h4 style="color:'+co.color+'">'+co.name+'</h4>' +
-      '<div class="val">'+co.valuation+' <small style="font-size:.7rem;color:var(--muted);">'+co.round+' · '+co.date+'</small></div>' +
-      '<div class="proxy">Proxies: '+co.proxies.map(t=>'<span class="ticker-tag">'+t+'</span>').join(' ')+'</div>' +
-      '<div style="margin-top:8px;font-size:.85rem;">Exposure Score: <strong style="color:'+co.color+';">'+(score*100).toFixed(1)+'</strong></div>' +
-      '</div>';
-  }).join('');
-}
-
-// ─── USER REGISTRATION ─────────────────────────────────────────────────────
-function initRegisterForm() {
-  const c = document.getElementById('userStocksContainer');
-  c.innerHTML = '';
-  userStockCount = 0;
-  addUserStock();
-}
-
-window.addUserStock = function() {
-  const c = document.getElementById('userStocksContainer');
-  const id = userStockCount++;
-  const row = document.createElement('div');
-  row.className = 'ticker-row';
-  row.id = 'urow_'+id;
-  row.innerHTML =
-    '<input placeholder="Ticker" id="u_t_'+id+'" style="max-width:100px;text-transform:uppercase"/>'+
-    '<input type="number" placeholder="Avg Price $" id="u_p_'+id+'" style="max-width:130px"/>'+
-    '<input type="number" placeholder="Shares" id="u_s_'+id+'" style="max-width:100px"/>'+
-    '<button class="btn btn-danger btn-sm" onclick="document.getElementById('urow_'+id+'').remove()">✕</button>';
-  c.appendChild(row);
-}
-
-window.registerUser = function() {
-  const name = document.getElementById('r_name').value.trim();
-  const email = document.getElementById('r_email').value.trim();
-  const alertEl = document.getElementById('registerAlert');
-
-  if (!name||!email) {
-    alertEl.innerHTML = '<div class="alert alert-error">Please enter your name and email.</div>';
-    return;
-  }
-  if (!/^[^@]+@[^@]+.[^@]+$/.test(email)) {
-    alertEl.innerHTML = '<div class="alert alert-error">Please enter a valid email address.</div>';
-    return;
-  }
-
-  const stocks = [];
-  document.querySelectorAll('#userStocksContainer .ticker-row').forEach(row => {
-    const id = row.id.replace('urow_','');
-    const t = document.getElementById('u_t_'+id)?.value.trim().toUpperCase();
-    const p = parseFloat(document.getElementById('u_p_'+id)?.value);
-    const s = parseFloat(document.getElementById('u_s_'+id)?.value);
-    if (t && !isNaN(p) && !isNaN(s)) stocks.push({ticker:t,avgPrice:p,shares:s});
-  });
-
-  if (!stocks.length) {
-    alertEl.innerHTML = '<div class="alert alert-error">Please add at least one stock holding.</div>';
-    return;
-  }
-
-  if (registeredUsers.find(u=>u.email===email)) {
-    const u = registeredUsers.find(u=>u.email===email);
-    u.name=name; u.stocks=stocks; u.updated=new Date().toISOString();
-    showToast('Portfolio updated for '+email);
-  } else {
-    registeredUsers.push({name,email,stocks,registered:new Date().toISOString()});
-    showToast('Subscribed! You will receive morning reports at '+email);
-  }
-
-  localStorage.setItem('registeredUsers',JSON.stringify(registeredUsers));
-  alertEl.innerHTML = '<div class="alert alert-success">✓ You are subscribed! Daily reports will be sent to <strong>'+email+'</strong> every morning.</div>';
-
-  // Download user data file for repo upload
-  const userData = { users: registeredUsers, updated: new Date().toISOString() };
-  const blob = new Blob([JSON.stringify(userData,null,2)],{type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download='users.json'; a.click();
-  URL.revokeObjectURL(url);
-}
-
-// ─── USERS TABLE ───────────────────────────────────────────────────────────
-function renderUsers() {
-  const tbody = document.getElementById('usersTable');
-  const countEl = document.getElementById('usersCount');
-  if (!registeredUsers.length) {
-    tbody.innerHTML = '<tr><td colspan="5" class="no-data">No users registered yet.</td></tr>';
-    countEl.textContent = '0 users';
-    return;
-  }
-  countEl.textContent = registeredUsers.length + ' user' + (registeredUsers.length===1?'':'s');
-  tbody.innerHTML = registeredUsers.map((u,i) =>
-    '<tr>'+
-    '<td>'+u.name+'</td>'+
-    '<td>'+u.email+'</td>'+
-    '<td>'+u.stocks.map(s=>'<span class="ticker-tag">'+s.ticker+'</span>').join(' ')+'</td>'+
-    '<td>'+(u.registered?new Date(u.registered).toLocaleDateString():'—')+'</td>'+
-    '<td><button class="btn btn-danger btn-sm" onclick="removeUser('+i+')">Remove</button></td>'+
-    '</tr>'
-  ).join('');
-}
-
-window.removeUser = function(i) {
-  registeredUsers.splice(i,1);
-  localStorage.setItem('registeredUsers',JSON.stringify(registeredUsers));
-  renderUsers();
-}
-
-// ─── TOAST ─────────────────────────────────────────────────────────────────
-function showToast(msg) {
-  const t = document.createElement('div');
-  t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#238636;color:#fff;padding:12px 20px;border-radius:8px;font-size:.88rem;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.5);';
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(()=>t.remove(),4000);
-}
-
-// ─── INIT ──────────────────────────────────────────────────────────────────
-document.getElementById('lastUpdated').textContent = 'Last updated: '+new Date().toLocaleString();
-renderMaster();
-renderPrivate();
-</script>
-</body>
-</html>
- + pnl.toFixed(2) : 'N/A';
-    const pnlClass = pnl !== null && pnl >= 0 ? 'green' : 'red';
-    const retSign = ret !== null && ret >= 0 ? '+' : '';
-    const retStr = ret !== null ? retSign + ret.toFixed(2) + '%' : 'N/A';
-    const retClass = ret !== null && ret >= 0 ? 'green' : 'red';
-    const row = '<tr>' +
-      '<td><span class="ticker-tag">' + s.ticker + '</span></td>' +
-      '<td>' + s.shares + '</td>' +
-      '<td>
-  tbody.innerHTML = rows.join('');
-  const totalRet = totalCost > 0 ? ((totalVal-totalCost)/totalCost)*100 : 0;
-  statsEl.innerHTML =
-    '<div class="card"><h3>Total Cost Basis</h3><div class="big">$'+totalCost.toFixed(2)+'</div></div>' +
-    '<div class="card"><h3>Market Value</h3><div class="big">$'+(totalVal||0).toFixed(2)+'</div><div class="change '+(totalPnl>=0?'green':'red')+'">'+(totalPnl>=0?'+':'')+totalPnl.toFixed(2)+'</div></div>' +
-    '<div class="card"><h3>Total Return</h3><div class="big '+(totalRet>=0?'green':'red')+'">'+(totalRet>=0?'+':'')+totalRet.toFixed(2)+'%</div></div>';
-}
-
-function getSignalBadge(ret) {
-  if (ret===null) return '<span class="badge neutral">N/A</span>';
-  if (ret > 15)   return '<span class="badge strong-buy">Strong Buy</span>';
-  if (ret > 5)    return '<span class="badge buy">Buy</span>';
-  if (ret > -5)   return '<span class="badge neutral">Neutral</span>';
-  if (ret > -15)  return '<span class="badge sell">Sell</span>';
-  return '<span class="badge strong-sell">Strong Sell</span>';
-}
-
-window.saveMasterPortfolio = function() {
-  saveMasterLocal();
-  const data = {
-    owner: 'lUIZhMACEDO',
-    portfolio: masterPortfolio,
-    updated: new Date().toISOString()
-  };
-  const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download='master_portfolio.json'; a.click();
-  URL.revokeObjectURL(url);
-  showToast('Portfolio saved! Upload master_portfolio.json to repo to update email reports.');
-}
-
-window.exportPortfolio = function() {
-  const blob = new Blob([JSON.stringify({portfolio:masterPortfolio},null,2)],{type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download='portfolio_export.json'; a.click();
-  URL.revokeObjectURL(url);
-}
-
-// ─── SIGNALS ───────────────────────────────────────────────────────────────
-const UNIVERSE = ['AAPL','MSFT','GOOGL','AMZN','NVDA','META','TSLA','RKLB','ASTS','LUNR','KTOS','ARM','SQ','ADYEN'];
-
-async function renderSignals() {
-  const tbody = document.getElementById('signalsTable');
-  tbody.innerHTML = '<tr><td colspan="8" class="no-data">Fetching live data...</td></tr>';
-  const tickers = [...new Set([...UNIVERSE, ...masterPortfolio.map(s=>s.ticker)])];
-  const prices = await fetchMultiplePrices(tickers);
-  let rows = tickers.map(t => {
-    const price = prices[t];
-    const rsi = (Math.random()*60+20).toFixed(1);
-    const macd = (Math.random()*4-2).toFixed(3);
-    const mom = ((Math.random()*20-8)).toFixed(2);
-    const volz = (Math.random()*3).toFixed(2);
-    const quintile = Math.ceil(Math.random()*5);
-    const signal = rsi<30?'strong-buy':rsi<45?'buy':rsi>70?'strong-sell':rsi>60?'sell':'neutral';
-    return { t, price, rsi, macd, mom, volz, quintile, signal };
-  });
-  window._signalRows = rows;
-  renderSignalRows(rows);
-  document.getElementById('signalUpdated').textContent = 'Updated: '+new Date().toLocaleTimeString();
-}
-
-function renderSignalRows(rows) {
-  const tbody = document.getElementById('signalsTable');
-  tbody.innerHTML = rows.map(r =>
-    '<tr data-signal="'+r.signal+'">' +
-    '<td><span class="ticker-tag">'+r.t+'</span></td>' +
-    '<td>'+(r.price?'$'+r.price.toFixed(2):'—')+'</td>' +
-    '<td class="'+(r.rsi<40?'green':r.rsi>60?'red':'')+'">' +r.rsi+'</td>' +
-    '<td class="'+(r.macd>0?'green':'red')+'">'+r.macd+'</td>' +
-    '<td class="'+(r.mom>0?'green':'red')+'">'+(r.mom>0?'+':'')+r.mom+'%</td>' +
-    '<td>'+r.volz+'</td>' +
-    '<td><span class="badge '+r.signal+'">'+r.signal.replace('-',' ').replace(/w/g,c=>c.toUpperCase())+'</span></td>' +
-    '<td>'+'&#9733;'.repeat(r.quintile)+'&#9734;'.repeat(5-r.quintile)+'</td>' +
-    '</tr>'
-  ).join('');
-}
-
-window.filterSignals = function(filter) {
-  if (!window._signalRows) return;
-  const rows = filter==='all' ? window._signalRows : window._signalRows.filter(r=>r.signal===filter);
-  renderSignalRows(rows);
-}
-
-// ─── PRIVATE EXPOSURE ──────────────────────────────────────────────────────
-async function renderPrivate() {
-  const el = document.getElementById('privateCards');
-  const allProxies = [...new Set(PRIVATE_DATA.flatMap(p=>p.proxies))];
-  const prices = await fetchMultiplePrices(allProxies);
-  el.innerHTML = PRIVATE_DATA.map(co => {
-    const score = Object.entries(co.weights).reduce((acc,[t,w]) => {
-      if (prices[t]) acc += w * (Math.random()*0.1+0.95);
-      return acc;
-    }, 0);
-    return '<div class="private-card">' +
-      '<h4 style="color:'+co.color+'">'+co.name+'</h4>' +
-      '<div class="val">'+co.valuation+' <small style="font-size:.7rem;color:var(--muted);">'+co.round+' · '+co.date+'</small></div>' +
-      '<div class="proxy">Proxies: '+co.proxies.map(t=>'<span class="ticker-tag">'+t+'</span>').join(' ')+'</div>' +
-      '<div style="margin-top:8px;font-size:.85rem;">Exposure Score: <strong style="color:'+co.color+';">'+(score*100).toFixed(1)+'</strong></div>' +
-      '</div>';
-  }).join('');
-}
-
-// ─── USER REGISTRATION ─────────────────────────────────────────────────────
-function initRegisterForm() {
-  const c = document.getElementById('userStocksContainer');
-  c.innerHTML = '';
-  userStockCount = 0;
-  addUserStock();
-}
-
-window.addUserStock = function() {
-  const c = document.getElementById('userStocksContainer');
-  const id = userStockCount++;
-  const row = document.createElement('div');
-  row.className = 'ticker-row';
-  row.id = 'urow_'+id;
-  row.innerHTML =
-    '<input placeholder="Ticker" id="u_t_'+id+'" style="max-width:100px;text-transform:uppercase"/>'+
-    '<input type="number" placeholder="Avg Price $" id="u_p_'+id+'" style="max-width:130px"/>'+
-    '<input type="number" placeholder="Shares" id="u_s_'+id+'" style="max-width:100px"/>'+
-    '<button class="btn btn-danger btn-sm" onclick="document.getElementById('urow_'+id+'').remove()">✕</button>';
-  c.appendChild(row);
-}
-
-window.registerUser = function() {
-  const name = document.getElementById('r_name').value.trim();
-  const email = document.getElementById('r_email').value.trim();
-  const alertEl = document.getElementById('registerAlert');
-
-  if (!name||!email) {
-    alertEl.innerHTML = '<div class="alert alert-error">Please enter your name and email.</div>';
-    return;
-  }
-  if (!/^[^@]+@[^@]+.[^@]+$/.test(email)) {
-    alertEl.innerHTML = '<div class="alert alert-error">Please enter a valid email address.</div>';
-    return;
-  }
-
-  const stocks = [];
-  document.querySelectorAll('#userStocksContainer .ticker-row').forEach(row => {
-    const id = row.id.replace('urow_','');
-    const t = document.getElementById('u_t_'+id)?.value.trim().toUpperCase();
-    const p = parseFloat(document.getElementById('u_p_'+id)?.value);
-    const s = parseFloat(document.getElementById('u_s_'+id)?.value);
-    if (t && !isNaN(p) && !isNaN(s)) stocks.push({ticker:t,avgPrice:p,shares:s});
-  });
-
-  if (!stocks.length) {
-    alertEl.innerHTML = '<div class="alert alert-error">Please add at least one stock holding.</div>';
-    return;
-  }
-
-  if (registeredUsers.find(u=>u.email===email)) {
-    const u = registeredUsers.find(u=>u.email===email);
-    u.name=name; u.stocks=stocks; u.updated=new Date().toISOString();
-    showToast('Portfolio updated for '+email);
-  } else {
-    registeredUsers.push({name,email,stocks,registered:new Date().toISOString()});
-    showToast('Subscribed! You will receive morning reports at '+email);
-  }
-
-  localStorage.setItem('registeredUsers',JSON.stringify(registeredUsers));
-  alertEl.innerHTML = '<div class="alert alert-success">✓ You are subscribed! Daily reports will be sent to <strong>'+email+'</strong> every morning.</div>';
-
-  // Download user data file for repo upload
-  const userData = { users: registeredUsers, updated: new Date().toISOString() };
-  const blob = new Blob([JSON.stringify(userData,null,2)],{type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download='users.json'; a.click();
-  URL.revokeObjectURL(url);
-}
-
-// ─── USERS TABLE ───────────────────────────────────────────────────────────
-function renderUsers() {
-  const tbody = document.getElementById('usersTable');
-  const countEl = document.getElementById('usersCount');
-  if (!registeredUsers.length) {
-    tbody.innerHTML = '<tr><td colspan="5" class="no-data">No users registered yet.</td></tr>';
-    countEl.textContent = '0 users';
-    return;
-  }
-  countEl.textContent = registeredUsers.length + ' user' + (registeredUsers.length===1?'':'s');
-  tbody.innerHTML = registeredUsers.map((u,i) =>
-    '<tr>'+
-    '<td>'+u.name+'</td>'+
-    '<td>'+u.email+'</td>'+
-    '<td>'+u.stocks.map(s=>'<span class="ticker-tag">'+s.ticker+'</span>').join(' ')+'</td>'+
-    '<td>'+(u.registered?new Date(u.registered).toLocaleDateString():'—')+'</td>'+
-    '<td><button class="btn btn-danger btn-sm" onclick="removeUser('+i+')">Remove</button></td>'+
-    '</tr>'
-  ).join('');
-}
-
-window.removeUser = function(i) {
-  registeredUsers.splice(i,1);
-  localStorage.setItem('registeredUsers',JSON.stringify(registeredUsers));
-  renderUsers();
-}
-
-// ─── TOAST ─────────────────────────────────────────────────────────────────
-function showToast(msg) {
-  const t = document.createElement('div');
-  t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#238636;color:#fff;padding:12px 20px;border-radius:8px;font-size:.88rem;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.5);';
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(()=>t.remove(),4000);
-}
-
-// ─── INIT ──────────────────────────────────────────────────────────────────
-document.getElementById('lastUpdated').textContent = 'Last updated: '+new Date().toLocaleString();
-renderMaster();
-renderPrivate();
-</script>
-</body>
-</html>
- + s.avgPrice.toFixed(2) + '</td>' +
-      '<td>' + priceStr + '</td>' +
-      '<td>' + valStr + '</td>' +
-      '<td class="' + pnlClass + '">' + pnlStr + '</td>' +
-      '<td class="' + retClass + '">' + retStr + '</td>' +
-      '<td>' + signal + '</td>' +
-      '<td><button class="btn btn-danger" onclick="removeMasterStock(' + "'" + s.ticker + "'" + ')">Remove</button></td>' +
-      '</tr>';
-    return row;
-  });
-  tbody.innerHTML = rows.join('');
-  const totalRet = totalCost > 0 ? ((totalVal-totalCost)/totalCost)*100 : 0;
-  statsEl.innerHTML =
-    '<div class="card"><h3>Total Cost Basis</h3><div class="big">$'+totalCost.toFixed(2)+'</div></div>' +
-    '<div class="card"><h3>Market Value</h3><div class="big">$'+(totalVal||0).toFixed(2)+'</div><div class="change '+(totalPnl>=0?'green':'red')+'">'+(totalPnl>=0?'+':'')+totalPnl.toFixed(2)+'</div></div>' +
-    '<div class="card"><h3>Total Return</h3><div class="big '+(totalRet>=0?'green':'red')+'">'+(totalRet>=0?'+':'')+totalRet.toFixed(2)+'%</div></div>';
-}
-
-function getSignalBadge(ret) {
-  if (ret===null) return '<span class="badge neutral">N/A</span>';
-  if (ret > 15)   return '<span class="badge strong-buy">Strong Buy</span>';
-  if (ret > 5)    return '<span class="badge buy">Buy</span>';
-  if (ret > -5)   return '<span class="badge neutral">Neutral</span>';
-  if (ret > -15)  return '<span class="badge sell">Sell</span>';
-  return '<span class="badge strong-sell">Strong Sell</span>';
-}
-
-window.saveMasterPortfolio = function() {
-  saveMasterLocal();
-  const data = {
-    owner: 'lUIZhMACEDO',
-    portfolio: masterPortfolio,
-    updated: new Date().toISOString()
-  };
-  const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download='master_portfolio.json'; a.click();
-  URL.revokeObjectURL(url);
-  showToast('Portfolio saved! Upload master_portfolio.json to repo to update email reports.');
-}
-
-window.exportPortfolio = function() {
-  const blob = new Blob([JSON.stringify({portfolio:masterPortfolio},null,2)],{type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download='portfolio_export.json'; a.click();
-  URL.revokeObjectURL(url);
-}
-
-// ─── SIGNALS ───────────────────────────────────────────────────────────────
-const UNIVERSE = ['AAPL','MSFT','GOOGL','AMZN','NVDA','META','TSLA','RKLB','ASTS','LUNR','KTOS','ARM','SQ','ADYEN'];
-
-async function renderSignals() {
-  const tbody = document.getElementById('signalsTable');
-  tbody.innerHTML = '<tr><td colspan="8" class="no-data">Fetching live data...</td></tr>';
-  const tickers = [...new Set([...UNIVERSE, ...masterPortfolio.map(s=>s.ticker)])];
-  const prices = await fetchMultiplePrices(tickers);
-  let rows = tickers.map(t => {
-    const price = prices[t];
-    const rsi = (Math.random()*60+20).toFixed(1);
-    const macd = (Math.random()*4-2).toFixed(3);
-    const mom = ((Math.random()*20-8)).toFixed(2);
-    const volz = (Math.random()*3).toFixed(2);
-    const quintile = Math.ceil(Math.random()*5);
-    const signal = rsi<30?'strong-buy':rsi<45?'buy':rsi>70?'strong-sell':rsi>60?'sell':'neutral';
-    return { t, price, rsi, macd, mom, volz, quintile, signal };
-  });
-  window._signalRows = rows;
-  renderSignalRows(rows);
-  document.getElementById('signalUpdated').textContent = 'Updated: '+new Date().toLocaleTimeString();
-}
-
-function renderSignalRows(rows) {
-  const tbody = document.getElementById('signalsTable');
-  tbody.innerHTML = rows.map(r =>
-    '<tr data-signal="'+r.signal+'">' +
-    '<td><span class="ticker-tag">'+r.t+'</span></td>' +
-    '<td>'+(r.price?'$'+r.price.toFixed(2):'—')+'</td>' +
-    '<td class="'+(r.rsi<40?'green':r.rsi>60?'red':'')+'">' +r.rsi+'</td>' +
-    '<td class="'+(r.macd>0?'green':'red')+'">'+r.macd+'</td>' +
-    '<td class="'+(r.mom>0?'green':'red')+'">'+(r.mom>0?'+':'')+r.mom+'%</td>' +
-    '<td>'+r.volz+'</td>' +
-    '<td><span class="badge '+r.signal+'">'+r.signal.replace('-',' ').replace(/w/g,c=>c.toUpperCase())+'</span></td>' +
-    '<td>'+'&#9733;'.repeat(r.quintile)+'&#9734;'.repeat(5-r.quintile)+'</td>' +
-    '</tr>'
-  ).join('');
-}
-
-window.filterSignals = function(filter) {
-  if (!window._signalRows) return;
-  const rows = filter==='all' ? window._signalRows : window._signalRows.filter(r=>r.signal===filter);
-  renderSignalRows(rows);
-}
-
-// ─── PRIVATE EXPOSURE ──────────────────────────────────────────────────────
-async function renderPrivate() {
-  const el = document.getElementById('privateCards');
-  const allProxies = [...new Set(PRIVATE_DATA.flatMap(p=>p.proxies))];
-  const prices = await fetchMultiplePrices(allProxies);
-  el.innerHTML = PRIVATE_DATA.map(co => {
-    const score = Object.entries(co.weights).reduce((acc,[t,w]) => {
-      if (prices[t]) acc += w * (Math.random()*0.1+0.95);
-      return acc;
-    }, 0);
-    return '<div class="private-card">' +
-      '<h4 style="color:'+co.color+'">'+co.name+'</h4>' +
-      '<div class="val">'+co.valuation+' <small style="font-size:.7rem;color:var(--muted);">'+co.round+' · '+co.date+'</small></div>' +
-      '<div class="proxy">Proxies: '+co.proxies.map(t=>'<span class="ticker-tag">'+t+'</span>').join(' ')+'</div>' +
-      '<div style="margin-top:8px;font-size:.85rem;">Exposure Score: <strong style="color:'+co.color+';">'+(score*100).toFixed(1)+'</strong></div>' +
-      '</div>';
-  }).join('');
-}
-
-// ─── USER REGISTRATION ─────────────────────────────────────────────────────
-function initRegisterForm() {
-  const c = document.getElementById('userStocksContainer');
-  c.innerHTML = '';
-  userStockCount = 0;
-  addUserStock();
-}
-
-window.addUserStock = function() {
-  const c = document.getElementById('userStocksContainer');
-  const id = userStockCount++;
-  const row = document.createElement('div');
-  row.className = 'ticker-row';
-  row.id = 'urow_'+id;
-  row.innerHTML =
-    '<input placeholder="Ticker" id="u_t_'+id+'" style="max-width:100px;text-transform:uppercase"/>'+
-    '<input type="number" placeholder="Avg Price $" id="u_p_'+id+'" style="max-width:130px"/>'+
-    '<input type="number" placeholder="Shares" id="u_s_'+id+'" style="max-width:100px"/>'+
-    '<button class="btn btn-danger btn-sm" onclick="document.getElementById('urow_'+id+'').remove()">✕</button>';
-  c.appendChild(row);
-}
-
-window.registerUser = function() {
-  const name = document.getElementById('r_name').value.trim();
-  const email = document.getElementById('r_email').value.trim();
-  const alertEl = document.getElementById('registerAlert');
-
-  if (!name||!email) {
-    alertEl.innerHTML = '<div class="alert alert-error">Please enter your name and email.</div>';
-    return;
-  }
-  if (!/^[^@]+@[^@]+.[^@]+$/.test(email)) {
-    alertEl.innerHTML = '<div class="alert alert-error">Please enter a valid email address.</div>';
-    return;
-  }
-
-  const stocks = [];
-  document.querySelectorAll('#userStocksContainer .ticker-row').forEach(row => {
-    const id = row.id.replace('urow_','');
-    const t = document.getElementById('u_t_'+id)?.value.trim().toUpperCase();
-    const p = parseFloat(document.getElementById('u_p_'+id)?.value);
-    const s = parseFloat(document.getElementById('u_s_'+id)?.value);
-    if (t && !isNaN(p) && !isNaN(s)) stocks.push({ticker:t,avgPrice:p,shares:s});
-  });
-
-  if (!stocks.length) {
-    alertEl.innerHTML = '<div class="alert alert-error">Please add at least one stock holding.</div>';
-    return;
-  }
-
-  if (registeredUsers.find(u=>u.email===email)) {
-    const u = registeredUsers.find(u=>u.email===email);
-    u.name=name; u.stocks=stocks; u.updated=new Date().toISOString();
-    showToast('Portfolio updated for '+email);
-  } else {
-    registeredUsers.push({name,email,stocks,registered:new Date().toISOString()});
-    showToast('Subscribed! You will receive morning reports at '+email);
-  }
-
-  localStorage.setItem('registeredUsers',JSON.stringify(registeredUsers));
-  alertEl.innerHTML = '<div class="alert alert-success">✓ You are subscribed! Daily reports will be sent to <strong>'+email+'</strong> every morning.</div>';
-
-  // Download user data file for repo upload
-  const userData = { users: registeredUsers, updated: new Date().toISOString() };
-  const blob = new Blob([JSON.stringify(userData,null,2)],{type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download='users.json'; a.click();
-  URL.revokeObjectURL(url);
-}
-
-// ─── USERS TABLE ───────────────────────────────────────────────────────────
-function renderUsers() {
-  const tbody = document.getElementById('usersTable');
-  const countEl = document.getElementById('usersCount');
-  if (!registeredUsers.length) {
-    tbody.innerHTML = '<tr><td colspan="5" class="no-data">No users registered yet.</td></tr>';
-    countEl.textContent = '0 users';
-    return;
-  }
-  countEl.textContent = registeredUsers.length + ' user' + (registeredUsers.length===1?'':'s');
-  tbody.innerHTML = registeredUsers.map((u,i) =>
-    '<tr>'+
-    '<td>'+u.name+'</td>'+
-    '<td>'+u.email+'</td>'+
-    '<td>'+u.stocks.map(s=>'<span class="ticker-tag">'+s.ticker+'</span>').join(' ')+'</td>'+
-    '<td>'+(u.registered?new Date(u.registered).toLocaleDateString():'—')+'</td>'+
-    '<td><button class="btn btn-danger btn-sm" onclick="removeUser('+i+')">Remove</button></td>'+
-    '</tr>'
-  ).join('');
-}
-
-window.removeUser = function(i) {
-  registeredUsers.splice(i,1);
-  localStorage.setItem('registeredUsers',JSON.stringify(registeredUsers));
-  renderUsers();
-}
-
-// ─── TOAST ─────────────────────────────────────────────────────────────────
-function showToast(msg) {
-  const t = document.createElement('div');
-  t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#238636;color:#fff;padding:12px 20px;border-radius:8px;font-size:.88rem;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.5);';
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(()=>t.remove(),4000);
-}
-
-// ─── INIT ──────────────────────────────────────────────────────────────────
-document.getElementById('lastUpdated').textContent = 'Last updated: '+new Date().toLocaleString();
-renderMaster();
-renderPrivate();
+})(); // end IIFE
 </script>
 </body>
 </html>
