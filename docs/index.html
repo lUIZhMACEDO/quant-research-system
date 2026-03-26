@@ -71,11 +71,11 @@
 </header>
 
 <nav>
-  <button class="active" onclick="showPage('master')">Master Portfolio</button>
-  <button onclick="showPage('signals')">Signals</button>
-  <button onclick="showPage('private')">Private Exposure</button>
-  <button onclick="showPage('register')">User Sign-Up</button>
-  <button onclick="showPage('users')">Users</button>
+  <button class="active" onclick="showPage('master',this)">Master Portfolio</button>
+  <button onclick="showPage('signals',this)">Signals</button>
+  <button onclick="showPage('private',this)">Private Exposure</button>
+  <button onclick="showPage('register',this)">User Sign-Up</button>
+  <button onclick="showPage('users',this)">Users</button>
 </nav>
 
 <div class="container">
@@ -210,11 +210,11 @@ let priceCache = {};
 let userStockCount = 1;
 
 // ─── NAVIGATION ────────────────────────────────────────────────────────────
-function showPage(name) {
+function showPage(name, btn) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
-  event.target.classList.add('active');
+  if (btn) btn.classList.add('active');
   if (name==='master') renderMaster();
   if (name==='signals') renderSignals();
   if (name==='private') renderPrivate();
