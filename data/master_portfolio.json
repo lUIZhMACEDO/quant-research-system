@@ -1,7 +1,27 @@
 {
-  "_note": "Edit this file to update your master portfolio. Changes here update your morning email report.",
-  "_howto": "Each entry needs ticker (string), avgPrice (number), shares (number).",
+  "_note": "This is your portfolio. Edit via the dashboard at https://luizhmacedo.github.io/quant-research-system/ or edit this file directly. Changes here are reflected in the next morning email.",
   "owner": "lUIZhMACEDO",
-  "updated": "2026-03-26T05:22:23.788Z",
-  "portfolio": []
+  "updated": "2026-03-27T19:46:54.302Z",
+  "portfolio": [
+    {
+      "ticker": "OKLO",
+      "shares": 14,
+      "avgPrice": 62.9
+    },
+    {
+      "ticker": "EWY",
+      "shares": 13,
+      "avgPrice": 114.11
+    },
+    {
+      "ticker": "SCHD",
+      "shares": 18,
+      "avgPrice": 28.53
+    },
+    {
+      "ticker": "VOO",
+      "shares": 6,
+      "avgPrice": 631.55
+    }
+  ]
 }
