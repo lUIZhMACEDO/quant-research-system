@@ -118,35 +118,29 @@ SCORES_CACHE_FILE = Path(__file__).parent / "scores_cache.json"
 ALERTS_FILE = Path(__file__).parent / "alerts.json"
 
 # -- SMART PICKS --
+# entry=0 => auto-compute from live price + ATR in enrich_picks
+# Positive entry => breakout buy (fills ABOVE current price)
+# Negative entry => use abs value as pct discount from current price for limit buy
 MOMENTUM_PICKS = [
-    {"ticker": "AMD", "name": "Advanced Micro Devices",
-     "strategy_type": "RSI_MACD",
-     "reason": "New Meta Platforms deal for 6GW of GPU infrastructure. "
-               "Fundamental shift in AI capex, not a retail pump.",
-     "entry": 213.50, "target": 235.00, "stop": 202.00},
-    {"ticker": "HD", "name": "Home Depot",
-     "strategy_type": "GOLDEN_CROSS",
-     "reason": "Earnings beat ($2.72 vs $2.53 expected). "
-               "Breaking out of a 3-month consolidation pattern.",
-     "entry": 412.00, "target": 435.00, "stop": 401.00},
+    {"ticker": "AMD",  "name": "Advanced Micro Devices", "strategy_type": "RSI_MACD",
+     "entry": 0,
+     "reason": "AI capex super-cycle intact. Meta/Alphabet GPU spend accelerating. "
+               "Buying the pullback toward ATR support — not chasing."},
+    {"ticker": "NVDA", "name": "NVIDIA Corporation",     "strategy_type": "RSI_MACD",
+     "entry": 0,
+     "reason": "Blackwell ramp intact. Tariff/macro fears creating oversold RSI. "
+               "Best-in-class AI infrastructure play — buy weakness."},
 ]
 
 SWING_PICKS = [
-    {"ticker": "ZBH", "name": "Zimmer Biomet",
-     "strategy_type": "BB_MEAN_REVERSION",
-     "reason": "Currently 34% undervalued relative to fair value ($130). "
-               "Solid value-rotation play for Q2 2026.",
-     "entry": 85.00, "target": 110.00, "stop": 79.00},
-    {"ticker": "PEP", "name": "PepsiCo",
-     "strategy_type": "INSTITUTIONAL",
-     "reason": "High institutional Put-Selling rank (100/100). "
-               "Heavy support at the $165 level.",
-     "entry": 168.00, "target": 182.00, "stop": 162.00},
-    {"ticker": "TMUS", "name": "T-Mobile US",
-     "strategy_type": "RSI_MACD",
-     "reason": "Strong relative strength during the recent AI-led dip. "
-               "Approaching major psychological breakout at $225.",
-     "entry": 220.00, "target": 245.00, "stop": 211.00},
+    {"ticker": "PEP",  "name": "PepsiCo",      "strategy_type": "INSTITUTIONAL",
+     "entry": 0,
+     "reason": "Defensive rotation play. RSI oversold, high institutional support. "
+               "Dividend yield near 4% — income + capital appreciation."},
+    {"ticker": "TMUS", "name": "T-Mobile US",  "strategy_type": "RSI_MACD",
+     "entry": 0,
+     "reason": "Best telecom relative strength. Tariff-immune domestic revenue. "
+               "Breaking above 200-day MA — momentum building."},
 ]
 
 STRATEGY_TIMELINE = [
@@ -1195,33 +1189,74 @@ def enrich_picks(picks: list[dict]) -> list[dict]:
         # Strategy detection (prefer label from config, auto-detect if MANUAL)
         strat = p.get("strategy_type", "MANUAL")
         auto = detect_strategy(tech, anly, earn)
-        if strat == "MANUAL" and auto != "MANUAL":
+                if strat == "MANUAL":
             strat = auto
 
-        # ATR-dynamic levels
-        entry = p["entry"]; target = p["target"]; stop = p["stop"]
-        if tech.get("atr_stop") and tech.get("atr_target"):
-            stop = tech["atr_stop"]
-            target = tech["atr_target"]
+        # -- ENTRY / STOP / TARGET (always validated against live price) --
+        atr = tech.get("atr", cur * 0.02) or (cur * 0.02)
+        cfg_entry  = p.get("entry", 0)
+        cfg_target = p.get("target", 0)
+        cfg_stop   = p.get("stop",   0)
+        BREAKOUT_STRATS = {"GOLDEN_CROSS", "ASCENDING_TRIANGLE", "BREAKOUT"}
+        is_breakout = strat in BREAKOUT_STRATS
 
-        risk_pct = (entry - stop) / entry * 100 if entry else 0
+        # Entry: for limit buys must be <= current price; for breakouts can be above
+        if cfg_entry and cfg_entry > 0:
+            if is_breakout:
+                entry = cfg_entry  # breakout triggers above market
+            else:
+                # If static entry is above current price, it is stale -- recompute
+                entry = cfg_entry if cfg_entry <= cur * 1.001 else round(cur * 0.992, 2)
+        else:
+            entry = round(cur * 1.005, 2) if is_breakout else round(cur * 0.992, 2)
+
+        # Stop: always below entry
+        if cfg_stop and 0 < cfg_stop < entry:
+            stop = cfg_stop
+        else:
+            stop = round(entry - 1.5 * atr, 2)
+
+        # Target: always above entry, enforce minimum 2:1 R/R
+        min_tgt = round(entry + 2.0 * (entry - stop), 2)
+        if cfg_target and cfg_target > entry:
+            target = max(round(cfg_target, 2), min_tgt)
+        else:
+            target = max(round(entry + 3.0 * atr, 2), min_tgt)
+
+        # Risk / Reward
+        risk_pct   = (entry - stop)   / entry * 100 if entry else 0
         reward_pct = (target - entry) / entry * 100 if entry else 0
-        rr = reward_pct / risk_pct if risk_pct > 0 else 0
+        rr         = reward_pct / risk_pct if risk_pct > 0 else 0
+
+        # Fill window -- actionable language based on entry vs current price
         try:
-            pos_size = compute_position_size(entry, stop)
+            if is_breakout:
+                pct_away = (entry - cur) / cur * 100 if cur else 0
+                if cur >= entry:
+                    fill = "Price at/above breakout trigger -- enter at market NOW"
+                elif pct_away < 0.5:
+                    fill = "Within 0.5pct of trigger ${:.2f} -- set alert".format(entry)
+                elif pct_away < 2.0:
+                    fill = "Breakout ${:.2f} is {:.1f}pct away -- could trigger today".format(entry, pct_away)
+                else:
+                    fill = "Breakout trigger ${:.2f} is {:.1f}pct above market -- monitor".format(entry, pct_away)
+            else:
+                pct_away = (cur - entry) / cur * 100 if cur else 0
+                if cur <= entry * 1.002:
+                    fill = "Limit ${:.2f} in range -- place GTC order NOW".format(entry)
+                elif pct_away < 1.5:
+                    fill = "Limit ${:.2f} is {:.1f}pct below -- likely fill on any intraday dip".format(entry, pct_away)
+                elif pct_away < 4.0:
+                    fill = "Limit ${:.2f} is {:.1f}pct below market -- expect fill in 1-3 sessions".format(entry, pct_away)
+                else:
+                    fill = "Limit ${:.2f} is {:.1f}pct below market -- GTC order, patient entry".format(entry, pct_away)
         except Exception:
-            pos_size = 1
-        fill = compute_fill_window(tk, entry)
+            fill = "Monitor open"
 
-        status = "ACTIVE" if cur and cur <= entry * 1.02 else "WATCH"
+        pos_size = compute_position_size(entry, stop, account_value=50000)
+        status = "ACTIVE" if (is_breakout and cur >= entry * 0.99) or (not is_breakout and cur <= entry * 1.01) else ("WATCH" if cur <= entry * 1.06 else "PENDING")
 
-        out.append({
-            **p, "current_price": round(cur, 2), "day_chg": round(day_chg, 2),
-            "status": status, "strategy_key": strat,
-            "strategy_name": STRATEGY_NAMES.get(strat, strat),
-            "entry": round(entry, 2), "target": round(target, 2),
-            "stop": round(stop, 2),
-            "risk_pct": round(risk_pct, 2), "reward_pct": round(reward_pct, 2),
+        "risk_pct": round(risk_pct, 2), "reward_pct": round(reward_pct, 2),
             "rr": round(rr, 1), "pos_size": pos_size, "fill_window": fill,
             "tech": tech, "earn": earn, "analyst": anly, "news": news, "fins": fins,
             "score": scoring["score"], "score_breakdown": scoring["breakdown"],
