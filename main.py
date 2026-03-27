@@ -1253,7 +1253,7 @@ def enrich_picks(picks: list[dict]) -> list[dict]:
         except Exception:
             fill = "Monitor open"
 
-        pos_size = compute_position_size(entry, stop, account_value=50000)
+        pos_size = compute_position_size(entry, stop)
         status = "ACTIVE" if (is_breakout and cur >= entry * 0.99) or (not is_breakout and cur <= entry * 1.01) else ("WATCH" if cur <= entry * 1.06 else "PENDING")
 
         out.append({
