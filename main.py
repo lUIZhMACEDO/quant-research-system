@@ -1195,9 +1195,9 @@ def enrich_picks(picks: list[dict]) -> list[dict]:
         reward_pct = (target - entry) / entry * 100 if entry else 0
         rr = reward_pct / risk_pct if risk_pct > 0 else 0
         try:
-        pos_size = compute_position_size(entry, stop)
-    except Exception:
-        pos_size = 1
+            pos_size = compute_position_size(entry, stop)
+        except Exception:
+            pos_size = 1
         fill = compute_fill_window(tk, entry)
 
         status = "ACTIVE" if cur and cur <= entry * 1.02 else "WATCH"
