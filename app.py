@@ -74,6 +74,34 @@ header[data-testid="stHeader"] {
 st.markdown(starfield_css, unsafe_allow_html=True)
 
 # ═════════════════════════════════════════════════════════════════
+# PASSWORD GATE — only owner can access
+# ═════════════════════════════════════════════════════════════════
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+if not st.session_state.authenticated:
+    st.markdown(f"""
+    <div style="display:flex;flex-direction:column;align-items:center;
+                justify-content:center;min-height:60vh;text-align:center;">
+        <div style="font-size:32px;font-weight:900;color:#ffffff;margin-bottom:8px;">
+            \U0001F512 Access Restricted</div>
+        <div style="font-size:15px;color:#6b7280;margin-bottom:32px;">
+            Enter the password to continue.</div>
+    </div>""", unsafe_allow_html=True)
+    pwd_input = st.text_input(
+        "Password", type="password", key="pwd_gate",
+        label_visibility="collapsed", placeholder="Enter password..."
+    )
+    if st.button("Unlock", type="primary"):
+        if pwd_input == "Meson8ballon":
+            st.session_state.authenticated = True
+            st.rerun()
+        else:
+            st.error("Incorrect password.")
+    st.stop()
+
+
+# ═════════════════════════════════════════════════════════════════
 #  PALETTE
 # ═════════════════════════════════════════════════════════════════
 BG     = "#000000"
