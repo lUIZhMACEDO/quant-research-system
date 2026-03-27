@@ -869,10 +869,19 @@ def compute_fill_window(ticker: str, entry: float) -> str:
 
 
 def compute_position_size(entry: float, stop: float) -> int:
-    risk = entry - stop
-    if risk <= 0:
-        return 0
-    return max(1, int(ACCOUNT_SIZE * 0.01 / risk))
+    try:
+        import math
+        if entry is None or stop is None:
+            return 1
+        risk = entry - stop
+        if risk <= 0 or math.isnan(risk) or math.isinf(risk):
+            return 1
+        result = ACCOUNT_SIZE * 0.01 / risk
+        if math.isnan(result) or math.isinf(result):
+            return 1
+        return max(1, int(result))
+    except Exception:
+        return 1
 
 
 # =====================================================================
@@ -1185,7 +1194,10 @@ def enrich_picks(picks: list[dict]) -> list[dict]:
         risk_pct = (entry - stop) / entry * 100 if entry else 0
         reward_pct = (target - entry) / entry * 100 if entry else 0
         rr = reward_pct / risk_pct if risk_pct > 0 else 0
+        try:
         pos_size = compute_position_size(entry, stop)
+    except Exception:
+        pos_size = 1
         fill = compute_fill_window(tk, entry)
 
         status = "ACTIVE" if cur and cur <= entry * 1.02 else "WATCH"
