@@ -2,9 +2,8 @@ name: Daily Stock Report
 
 on:
   schedule:
-    # 8:30 AM ET = 12:30 UTC (summer/EDT) = 13:30 UTC (winter/EST)
+    # 8:30 AM ET = 12:30 UTC (EDT/summer). Update to 13:30 in Nov when clocks fall back.
     - cron: "30 12 * * 1-5"
-    - cron: "30 13 * * 1-5"
   workflow_dispatch:
 
 jobs:
