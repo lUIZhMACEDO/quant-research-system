@@ -1256,7 +1256,13 @@ def enrich_picks(picks: list[dict]) -> list[dict]:
         pos_size = compute_position_size(entry, stop, account_value=50000)
         status = "ACTIVE" if (is_breakout and cur >= entry * 0.99) or (not is_breakout and cur <= entry * 1.01) else ("WATCH" if cur <= entry * 1.06 else "PENDING")
 
-        "risk_pct": round(risk_pct, 2), "reward_pct": round(reward_pct, 2),
+        out.append({
+            **p, "current_price": round(cur, 2), "day_chg": round(day_chg, 2),
+            "status": status, "strategy_key": strat,
+            "strategy_name": STRATEGY_NAMES.get(strat, strat),
+            "entry": round(entry, 2), "target": round(target, 2),
+            "stop": round(stop, 2),
+            "risk_pct": round(risk_pct, 2), "reward_pct": round(reward_pct, 2),
             "rr": round(rr, 1), "pos_size": pos_size, "fill_window": fill,
             "tech": tech, "earn": earn, "analyst": anly, "news": news, "fins": fins,
             "score": scoring["score"], "score_breakdown": scoring["breakdown"],
