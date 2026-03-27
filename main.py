@@ -1189,7 +1189,7 @@ def enrich_picks(picks: list[dict]) -> list[dict]:
         # Strategy detection (prefer label from config, auto-detect if MANUAL)
         strat = p.get("strategy_type", "MANUAL")
         auto = detect_strategy(tech, anly, earn)
-                if strat == "MANUAL":
+        if strat == "MANUAL":
             strat = auto
 
         # -- ENTRY / STOP / TARGET (always validated against live price) --
