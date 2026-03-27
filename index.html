@@ -211,6 +211,8 @@ input:focus{border-color:var(--blue)}
         </div>
         <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:flex-end">
           <button class="btn btn-blue btn-sm" onclick="addRow()">+ Add Stock</button>
+          <button class="btn btn-sm" id="saveGHBtn" onclick="savePortfolioToGitHub()" style="background:#238636;color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-weight:600;">&#x1F4BE; Save Portfolio</button>
+          <span id="saveStatus" style="font-size:12px;margin-left:8px;color:#58a6ff;"></span>
           <button class="btn btn-blue" onclick="analyze()" id="analyzeBtn">Analyze Portfolio</button>
           <div><label>Email (optional)</label><input type="email" id="userEmail" placeholder="you@example.com" style="width:220px"></div>
         </div>
@@ -857,6 +859,95 @@ async function init(){
   }
   setInterval(()=>{loadMarket();loadTape();},30000);
 }
+</script>
+
+<script>
+// ========== GITHUB PORTFOLIO SYNC ==========
+const GH_REPO = 'lUIZhMACEDO/quant-research-system';
+const GH_FILE = 'data/master_portfolio.json';
+
+function getGHToken() {
+  let t = localStorage.getItem('gh_pat');
+  if (!t) {
+    t = prompt('Enter your GitHub token to enable portfolio sync (stored locally in your browser only):');
+    if (t && t.trim()) localStorage.setItem('gh_pat', t.trim());
+  }
+  return t ? t.trim() : null;
+}
+
+async function loadPortfolioFromGitHub() {
+  try {
+    const t = localStorage.getItem('gh_pat');
+    if (!t) return;
+    const r = await fetch('https://api.github.com/repos/' + GH_REPO + '/contents/' + GH_FILE, {
+      headers: { 'Authorization': 'token ' + t }
+    });
+    const data = await r.json();
+    if (!data.content) return;
+    window._ghFileSha = data.sha;
+    const content = JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\n/g,'')))));
+    const holdings = content.portfolio || [];
+    if (!holdings.length) return;
+    const container = document.getElementById('stockRows');
+    if (!container) return;
+    container.innerHTML = '';
+    holdings.forEach(h => {
+      const row = document.createElement('div');
+      row.className = 'form-row stock-row';
+      row.innerHTML = '<div><label>Ticker</label><input type="text" class="f-tk" placeholder="AAPL" style="text-transform:uppercase" value="' + h.ticker + '"></div>' +
+        '<div><label>Shares</label><input type="number" class="f-sh" placeholder="10" min="0" step="any" value="' + h.shares + '"></div>' +
+        '<div><label>Avg Cost $</label><input type="number" class="f-av" placeholder="150" min="0" step="0.01" value="' + h.avgPrice + '"></div>' +
+        '<div style="padding-top:16px"><button class="btn btn-del btn-sm" onclick="delRow(this)">&#x2715;</button></div>';
+      container.appendChild(row);
+    });
+    const s = document.getElementById('saveStatus');
+    if (s) { s.textContent = 'Loaded ' + holdings.length + ' holdings'; setTimeout(() => s.textContent='', 3000); }
+  } catch(e) { console.warn('Portfolio load failed:', e); }
+}
+
+async function savePortfolioToGitHub() {
+  const btn = document.getElementById('saveGHBtn');
+  const status = document.getElementById('saveStatus');
+  const token = getGHToken();
+  if (!token) return;
+  btn.disabled = true; btn.textContent = 'Saving...';
+  const rows = document.querySelectorAll('#stockRows .stock-row');
+  const holdings = [];
+  rows.forEach(row => {
+    const ticker = (row.querySelector('.f-tk')||{}).value;
+    const shares = parseFloat((row.querySelector('.f-sh')||{}).value);
+    const avgPrice = parseFloat((row.querySelector('.f-av')||{}).value);
+    if (ticker && ticker.trim() && !isNaN(shares) && !isNaN(avgPrice)) {
+      holdings.push({ ticker: ticker.trim().toUpperCase(), shares, avgPrice });
+    }
+  });
+  if (!holdings.length) { status.textContent = 'No valid stocks'; btn.disabled=false; btn.textContent='&#x1F4BE; Save Portfolio'; return; }
+  try {
+    if (!window._ghFileSha) {
+      const r = await fetch('https://api.github.com/repos/' + GH_REPO + '/contents/' + GH_FILE, { headers: { 'Authorization': 'token ' + token } });
+      const d = await r.json(); window._ghFileSha = d.sha;
+    }
+    const payload = { _note:'Managed via dashboard', owner:'lUIZhMACEDO', updated:new Date().toISOString(), portfolio: holdings };
+    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 2))));
+    const r = await fetch('https://api.github.com/repos/' + GH_REPO + '/contents/' + GH_FILE, {
+      method: 'PUT',
+      headers: { 'Authorization': 'token ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: 'Update portfolio via dashboard (' + holdings.length + ' stocks)', content: encoded, sha: window._ghFileSha })
+    });
+    const result = await r.json();
+    if (result.commit) {
+      window._ghFileSha = result.content.sha;
+      btn.textContent = 'Saved!'; status.textContent = holdings.length + ' stocks saved — email updates tonight';
+      setTimeout(() => { btn.textContent='&#x1F4BE; Save Portfolio'; btn.disabled=false; status.textContent=''; }, 3500);
+    } else { throw new Error(result.message || 'API error'); }
+  } catch(e) {
+    if (e.message && e.message.includes('401')) { localStorage.removeItem('gh_pat'); status.textContent = 'Token invalid — click save again to re-enter'; }
+    else status.textContent = 'Error: ' + e.message;
+    btn.textContent='&#x1F4BE; Save Portfolio'; btn.disabled=false;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => { setTimeout(loadPortfolioFromGitHub, 800); });
 </script>
 </body>
 </html>
