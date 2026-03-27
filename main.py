@@ -1751,8 +1751,21 @@ def build_html(sp, macro, catalysts, portfolio, picks_m, picks_s, gainers, loser
     now_s = datetime.datetime.now().strftime("%I:%M %p")
     pre_html = html_premarket(premarket_movers or [])
     friday_html = html_friday_recap(portfolio)
-    return f"""<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background-color:{C_BG};font-family:'SF Pro Display','Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+    return f"""<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<style>
+  /* Force dark mode — prevents Gmail/Outlook from overriding */
+  :root {{ color-scheme: dark; }}
+  body, div, td, th, p, span, a {{ color-scheme: dark !important; }}
+  [data-ogsc] body {{ background-color: #0b0e11 !important; }}
+  [data-ogsb] body {{ background-color: #0b0e11 !important; }}
+  u + .body {{ background-color: #0b0e11 !important; }}
+  @media (prefers-color-scheme: dark) {{
+    body {{ background-color: #0b0e11 !important; color: #d1d4dc !important; }}
+    .email-wrap {{ background-color: #0b0e11 !important; }}
+  }}
+</style>
+</head>
+<body class="body" style="margin:0;padding:0;background-color:{C_BG};font-family:'SF Pro Display','Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;">
 <div style="max-width:720px;margin:0 auto;padding:20px 10px;">
   {html_header(sp, today_s, now_s)}
   <div style="background:{C_CARD};border-radius:0 0 12px 12px;padding-bottom:8px;overflow:hidden;">
