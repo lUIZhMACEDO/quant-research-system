@@ -2,31 +2,48 @@ name: Daily Stock Report
 
 on:
   schedule:
-    # Mon-Fri. GitHub Actions cron is UTC:
-    # - 13:30 UTC = 8:30 AM EST (winter)
-    # - 12:30 UTC = 8:30 AM EDT (summer)
+    # 7:30 AM ET = 11:30 UTC (summer/EDT) = 12:30 UTC (winter/EST)
+    # Running both to cover DST transitions
+    - cron: "30 11 * * 1-5"
     - cron: "30 12 * * 1-5"
-  workflow_dispatch: # allows manual trigger from GitHub
+  workflow_dispatch:
 
 jobs:
   send-report:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: ${{ runner.os }}-pip-
 
-      - name: Run stock analyst
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run daily stock report & send email
         env:
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
           RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
           FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PUBLIC_MODE: "0"
         run: python main.py
+
+      - name: Notify on failure
+        if: failure()
+        run: echo "Daily report failed at $(date). Check logs above."
