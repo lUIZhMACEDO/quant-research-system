@@ -79,13 +79,26 @@ if FINNHUB_API_KEY and _fh_mod:
     except Exception:
         _fh = None
 
-# -- YOUR PORTFOLIO --
-MY_PORTFOLIO = [
-    {"ticker": "OKLO",  "shares": 14,  "avg_cost": 62.90},
-    {"ticker": "EWY",   "shares": 13,  "avg_cost": 114.11},
-    {"ticker": "SCHD",  "shares": 18,  "avg_cost": 28.53},
-    {"ticker": "VOO",   "shares": 6,   "avg_cost": 631.55},
-]
+# -- YOUR PORTFOLIO (loaded from data/master_portfolio.json) --
+import json as _json, os as _os
+def _load_portfolio():
+    _path = _os.path.join(_os.path.dirname(__file__), 'data', 'master_portfolio.json')
+    try:
+        with open(_path) as _f:
+            _data = _json.load(_f)
+        _holdings = _data.get('portfolio', [])
+        if _holdings:
+            return [{"ticker": h["ticker"], "shares": h["shares"], "avg_cost": h["avgPrice"]} for h in _holdings]
+    except Exception as _e:
+        print(f"Warning: could not load portfolio JSON: {_e}")
+    # Fallback to hardcoded list if JSON is empty or missing
+    return [
+        {"ticker": "OKLO",  "shares": 14,  "avg_cost": 62.90},
+        {"ticker": "EWY",   "shares": 13,  "avg_cost": 114.11},
+        {"ticker": "SCHD",  "shares": 18,  "avg_cost": 28.53},
+        {"ticker": "VOO",   "shares": 6,   "avg_cost": 631.55},
+    ]
+MY_PORTFOLIO = _load_portfolio()
 
 PORTFOLIO_STRATEGIES = {
     "OKLO": "Hold until July 2026 DOE milestones; Sell if >$85.",
@@ -238,7 +251,7 @@ def _similar(a: str, b: str, thresh: float = 0.80) -> bool:
 
 
 def get_crypto_prices(coins=None):
-    """CoinGecko free API — no key required. Returns price, 24h change, market cap."""
+    """CoinGecko free API â no key required. Returns price, 24h change, market cap."""
     if coins is None:
         coins = ["bitcoin", "ethereum", "solana", "binancecoin", "ripple"]
     url = "https://api.coingecko.com/api/v3/simple/price"
@@ -257,7 +270,7 @@ def get_crypto_prices(coins=None):
 
 
 def get_fear_greed():
-    """Crypto Fear & Greed Index — free, no key required."""
+    """Crypto Fear & Greed Index â free, no key required."""
     try:
         r = requests.get("https://api.alternative.me/fng/", timeout=5)
         d = r.json()["data"][0]
@@ -1753,7 +1766,7 @@ def build_html(sp, macro, catalysts, portfolio, picks_m, picks_s, gainers, loser
     friday_html = html_friday_recap(portfolio)
     return f"""<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <style>
-  /* Force dark mode — prevents Gmail/Outlook from overriding */
+  /* Force dark mode â prevents Gmail/Outlook from overriding */
   :root {{ color-scheme: dark; }}
   body, div, td, th, p, span, a {{ color-scheme: dark !important; }}
   [data-ogsc] body {{ background-color: #0b0e11 !important; }}
@@ -1877,7 +1890,7 @@ def main():
     risk_d = compute_risk_dashboard(portfolio)
     print(f"  [OK] Beta: {risk_d['weighted_beta']:.2f}  Risk: {risk_d['risk_rating']}  VaR: ${risk_d['var_95']:,.2f}")
 
-    # ── Alert detection ───────────────────────────────────────────────────
+    # ââ Alert detection âââââââââââââââââââââââââââââââââââââââââââââââââââ
     def _load_scores_cache() -> dict:
         try:
             return json.loads(SCORES_CACHE_FILE.read_text()) if SCORES_CACHE_FILE.exists() else {}
@@ -1909,7 +1922,7 @@ def main():
             if abs(curr_score - prev_score) >= rules["min_score_change"]:
                 alerts.append({
                     "ticker": ticker, "type": "SIGNAL_CHANGE", "severity": "HIGH",
-                    "message": f"{ticker} signal score: {prev_score:+.1f} → {curr_score:+.1f} ({r.get('signal','?')})",
+                    "message": f"{ticker} signal score: {prev_score:+.1f} â {curr_score:+.1f} ({r.get('signal','?')})",
                     "time": datetime.datetime.now().strftime("%I:%M %p"),
                 })
             # Earnings
@@ -1930,8 +1943,8 @@ def main():
     # Send short alert email if any HIGH alerts exist
     high_alerts = [a for a in portfolio_alerts if a["severity"] == "HIGH"]
     if high_alerts:
-        alert_body = "\n".join(f"• {a['message']}" for a in high_alerts)
-        alert_subject = f"Stock Alert — {', '.join(set(a['ticker'] for a in high_alerts))}"
+        alert_body = "\n".join(f"â¢ {a['message']}" for a in high_alerts)
+        alert_subject = f"Stock Alert â {', '.join(set(a['ticker'] for a in high_alerts))}"
         try:
             msg = MIMEMultipart("alternative")
             msg["Subject"] = alert_subject
@@ -1954,7 +1967,7 @@ def main():
                 }, timeout=3)
             except Exception:
                 pass
-    # ─────────────────────────────────────────────────────────────────────
+    # âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
     print("[5/7] Enriching smart picks...")
     picks_m = enrich_picks(MOMENTUM_PICKS)
