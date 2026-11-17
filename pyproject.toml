@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quant-research-system"
+version = "4.0.0"
+description = "End-of-day equity research pipeline: SQLite store, rule-based screens, email report and Streamlit dashboard."
+readme = "README.md"
+requires-python = ">=3.11"
+dynamic = ["dependencies"]
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+quant_research = ["storage/schema.sql"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+src = ["src", "tests"]
+extend-exclude = ["*.ipynb"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S"]
+ignore = [
+    "E501",  # long lines: the HTML/CSS templates are kept readable rather than wrapped
+    "S110",  # try/except/pass: provider calls deliberately degrade to empty results
+    "S112",
+    "B008",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106"]
+"src/quant_research/storage/db.py" = ["S608"]  # table/column names are validated against PRAGMA table_info
+"src/quant_research/reporting/daily.py" = ["S603", "S607"]  # fixed schtasks argv, no shell
+
+[tool.ruff.format]
+quote-style = "preserve"

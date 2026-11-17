@@ -1,5 +1,16 @@
 # Secrets
 .env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+
+# Local data and run state
+quant.db
+example.db
+quant.db-*
+*.sqlite
+scores_cache.json
+alerts.json
 
 # Python
 __pycache__/
@@ -10,6 +21,10 @@ dist/
 build/
 .eggs/
 *.egg
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
 # Virtual environments
 venv/

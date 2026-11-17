@@ -65,9 +65,9 @@ tr:hover td{background:rgba(88,166,255,.04);}
   <button class="active" onclick="showPage('master',this)">Master Portfolio</button>
   <button onclick="showPage('signals',this)">Signals</button>
   <button onclick="showPage('private',this)">Private Exposure</button>
-  <button onclick="showPage('register',this)">User Sign-Up</button>
-  <button onclick="showPage('users',this)">Users</button>
 </nav>
+<!-- Subscriber sign-up was removed: it collected names and emails into a public data/users.json.
+     See README > Security for why personal data never goes in this repo. -->
 
 <div class="container">
 
@@ -130,35 +130,6 @@ tr:hover td{background:rgba(88,166,255,.04);}
     <div class="grid2" id="privateCards"></div>
   </div>
 
-  <!-- USER SIGN-UP -->
-  <div id="page-register" class="page">
-    <div class="section-title">Track Your Portfolio</div>
-    <p style="color:var(--muted);font-size:.85rem;margin-bottom:20px;">Enter your holdings and receive a personalized daily morning email.</p>
-    <div class="card" style="max-width:600px;">
-      <div id="registerAlert"></div>
-      <div class="form-group"><label>Your Name</label><input id="r_name" placeholder="John Smith"/></div>
-      <div class="form-group"><label>Email Address</label><input id="r_email" type="email" placeholder="you@example.com"/></div>
-      <div class="section-title" style="font-size:.95rem;margin-top:8px;">Your Holdings</div>
-      <div id="userStocksContainer"></div>
-      <button class="btn btn-outline btn-sm" onclick="addUserStock()" style="margin-bottom:16px;">+ Add Stock</button>
-      <br/>
-      <button class="btn btn-primary" onclick="registerUser()">Subscribe to Daily Report</button>
-    </div>
-  </div>
-
-  <!-- USERS -->
-  <div id="page-users" class="page">
-    <div class="tab-header">
-      <div class="section-title" style="margin:0;border:none;">Registered Users</div>
-      <span class="last-updated" id="usersCount"></span>
-    </div>
-    <div class="card">
-      <table>
-        <thead><tr><th>Name</th><th>Email</th><th>Holdings</th><th>Registered</th><th></th></tr></thead>
-        <tbody id="usersTable"><tr><td colspan="5" class="no-data">No users registered yet.</td></tr></tbody>
-      </table>
-    </div>
-  </div>
 
 </div>
 
@@ -176,9 +147,7 @@ var PRIVATE_DATA = [
 
 var UNIVERSE = ["AAPL","MSFT","GOOGL","AMZN","NVDA","META","TSLA","RKLB","ASTS","LUNR","KTOS","ARM","SQ"];
 var masterPortfolio = JSON.parse(localStorage.getItem("masterPortfolio") || "[]");
-var registeredUsers = JSON.parse(localStorage.getItem("registeredUsers") || "[]");
 var priceCache = {};
-var userStockCount = 0;
 
 // Helpers
 function clr(v) { return (v >= 0) ? "green" : "red"; }
@@ -200,8 +169,6 @@ window.showPage = function(name, btn) {
   if (name === "master") renderMaster();
   if (name === "signals") renderSignals();
   if (name === "private") renderPrivate();
-  if (name === "users") renderUsers();
-  if (name === "register") initRegisterForm();
 };
 
 // Price fetching
@@ -407,107 +374,6 @@ function renderPrivate() {
       "</div>";
   }).join("");
 }
-
-// User Registration
-function initRegisterForm() {
-  var c = document.getElementById("userStocksContainer");
-  c.innerHTML = "";
-  userStockCount = 0;
-  addUserStock();
-}
-
-window.addUserStock = function() {
-  var c = document.getElementById("userStocksContainer");
-  var id = userStockCount++;
-  var row = document.createElement("div");
-  row.className = "ticker-row";
-  row.id = "urow_" + id;
-  row.innerHTML =
-    "<input placeholder=\"Ticker\" id=\"u_t_" + id + "\" style=\"max-width:100px;text-transform:uppercase\"/>" +
-    "<input type=\"number\" placeholder=\"Avg Price $\" id=\"u_p_" + id + "\" style=\"max-width:130px\"/>" +
-    "<input type=\"number\" placeholder=\"Shares\" id=\"u_s_" + id + "\" style=\"max-width:100px\"/>" +
-    "<button class=\"btn btn-danger btn-sm\" onclick=\"document.getElementById('urow_" + id + "').remove()\">X</button>";
-  c.appendChild(row);
-};
-
-window.registerUser = function() {
-  var name = document.getElementById("r_name").value.trim();
-  var email = document.getElementById("r_email").value.trim();
-  var alertEl = document.getElementById("registerAlert");
-  if (!name || !email) {
-    alertEl.innerHTML = "<div class=\"alert alert-error\">Please enter your name and email.</div>";
-    return;
-  }
-  if (!/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
-    alertEl.innerHTML = "<div class=\"alert alert-error\">Please enter a valid email address.</div>";
-    return;
-  }
-  var stocks = [];
-  var rows = document.querySelectorAll("#userStocksContainer .ticker-row");
-  for (var i = 0; i < rows.length; i++) {
-    var rowId = rows[i].id.replace("urow_", "");
-    var tEl = document.getElementById("u_t_" + rowId);
-    var pEl = document.getElementById("u_p_" + rowId);
-    var sEl = document.getElementById("u_s_" + rowId);
-    if (tEl && pEl && sEl) {
-      var t = tEl.value.trim().toUpperCase();
-      var p = parseFloat(pEl.value);
-      var s = parseFloat(sEl.value);
-      if (t && !isNaN(p) && !isNaN(s)) stocks.push({ticker:t, avgPrice:p, shares:s});
-    }
-  }
-  if (!stocks.length) {
-    alertEl.innerHTML = "<div class=\"alert alert-error\">Please add at least one stock holding.</div>";
-    return;
-  }
-  var existingIdx = -1;
-  for (var i = 0; i < registeredUsers.length; i++) {
-    if (registeredUsers[i].email === email) { existingIdx = i; break; }
-  }
-  if (existingIdx >= 0) {
-    registeredUsers[existingIdx].name = name;
-    registeredUsers[existingIdx].stocks = stocks;
-    registeredUsers[existingIdx].updated = new Date().toISOString();
-  } else {
-    registeredUsers.push({name:name, email:email, stocks:stocks, registered:new Date().toISOString()});
-  }
-  localStorage.setItem("registeredUsers", JSON.stringify(registeredUsers));
-  alertEl.innerHTML = "<div class=\"alert alert-success\">Subscribed! Daily reports will be sent to <strong>" + email + "</strong> every morning.</div>";
-  var userData = {users: registeredUsers, updated: new Date().toISOString()};
-  var blob = new Blob([JSON.stringify(userData,null,2)], {type:"application/json"});
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement("a"); a.href = url; a.download = "users.json"; a.click();
-  URL.revokeObjectURL(url);
-};
-
-// Users Table
-function renderUsers() {
-  var tbody = document.getElementById("usersTable");
-  var countEl = document.getElementById("usersCount");
-  if (!registeredUsers.length) {
-    tbody.innerHTML = "<tr><td colspan=\"5\" class=\"no-data\">No users registered yet.</td></tr>";
-    countEl.textContent = "0 users";
-    return;
-  }
-  countEl.textContent = registeredUsers.length + " user" + (registeredUsers.length === 1 ? "" : "s");
-  tbody.innerHTML = registeredUsers.map(function(u, idx) {
-    var tags = u.stocks.map(function(s) { return "<span class=\"ticker-tag\">" + s.ticker + "</span>"; }).join(" ");
-    var dateStr = u.registered ? new Date(u.registered).toLocaleDateString() : "N/A";
-    return "<tr>" +
-      "<td>" + u.name + "</td>" +
-      "<td>" + u.email + "</td>" +
-      "<td>" + tags + "</td>" +
-      "<td>" + dateStr + "</td>" +
-      "<td><button class=\"btn btn-danger btn-sm\" onclick=\"removeUser(" + idx + ")\">Remove</button></td>" +
-      "</tr>";
-  }).join("");
-}
-
-window.removeUser = function(i) {
-  registeredUsers.splice(i, 1);
-  localStorage.setItem("registeredUsers", JSON.stringify(registeredUsers));
-  renderUsers();
-};
 
 // Toast notification
 function showToast(msg) {
