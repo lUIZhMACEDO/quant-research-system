@@ -1,20 +1,18 @@
+# Runtime dependencies (installed by Streamlit Cloud and the daily-report workflow)
 streamlit>=1.41.0
-streamlit-autorefresh
-pandas
-yfinance
-requests
-python-dotenv
-lxml
-html5lib
-ta
-finnhub-python
-beautifulsoup4
-numpy
-feedparser
-plotly
-pytz
-anthropic
-pyfinviz
-fastapi
-uvicorn
-httpx
+pandas>=2.1
+numpy>=1.26
+yfinance>=0.2.50
+requests>=2.31
+python-dotenv>=1.0
+ta>=0.11
+finnhub-python>=2.4
+feedparser>=6.0
+plotly>=5.20
+pytz>=2024.1
+anthropic>=0.40
+pyfinviz>=1.0
+# pandas.read_html(flavor="html5lib") for the S&P 500 constituents table
+html5lib>=1.1
+beautifulsoup4>=4.12
+lxml>=5.0
