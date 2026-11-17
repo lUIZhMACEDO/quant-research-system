@@ -13,17 +13,8 @@ body{background-image:radial-gradient(white,rgba(255,255,255,.2) 2px,transparent
 @keyframes stars{0%{background-position:0 0,40px 60px}100%{background-position:-550px 550px,-310px 410px}}
 
 /* LOCK */
-.lock-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:20px}
-.lock-box{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:48px 40px;max-width:400px;width:100%}
-.lock-icon{font-size:52px;margin-bottom:16px}
-.lock-title{font-size:28px;font-weight:900;color:var(--white);margin-bottom:6px}
-.lock-sub{font-size:14px;color:var(--dim);margin-bottom:28px}
-.pwd-input{width:100%;padding:14px;background:var(--alt);border:1px solid var(--border);border-radius:10px;color:var(--white);font-size:16px;outline:none;margin-bottom:12px}
-.pwd-input:focus{border-color:var(--blue)}
-.btn-unlock{width:100%;padding:14px;background:var(--blue);color:var(--white);border:none;border-radius:10px;font-size:16px;font-weight:800;cursor:pointer}
-.btn-unlock:hover{background:#2563eb}
 .err{color:var(--red);font-size:13px;margin-top:8px;display:none}
-.app{display:none}
+.app{display:block}
 
 /* HEADER */
 .header{background:linear-gradient(135deg,var(--card),var(--alt));border-bottom:1px solid var(--border);padding:14px 20px;position:sticky;top:0;z-index:200}
@@ -147,18 +138,6 @@ input:focus{border-color:var(--blue)}
 </style>
 </head>
 <body>
-<!-- LOCK -->
-<div class="lock-screen" id="lockScreen">
-  <div class="lock-box">
-    <div class="lock-icon">🔒</div>
-    <div class="lock-title">AI Stock Analyst</div>
-    <div class="lock-sub">Private dashboard — enter your password</div>
-    <input class="pwd-input" type="password" id="pwdInput" placeholder="Password..." onkeydown="if(event.key==='Enter')unlock()">
-    <button class="btn-unlock" onclick="unlock()">Unlock</button>
-    <div class="err" id="pwdErr">Incorrect password.</div>
-  </div>
-</div>
-
 <!-- APP -->
 <div class="app" id="app">
   <div class="header">
@@ -825,7 +804,10 @@ function addRow(){
   $('stockRows').appendChild(d);
 }
 function delRow(btn){const r=btn.closest('.stock-row');if(document.querySelectorAll('.stock-row').length>1)r.remove();}
-function unlock(){if($('pwdInput').value==='Meson8ballon'){$('lockScreen').style.display='none';$('app').style.display='block';init();}else{$('pwdErr').style.display='block';}}
+// No client-side password: any secret shipped in a public static page is readable by
+// everyone (View Source). Everything this page shows is public market data or files that
+// are already public in this repo, so it simply loads.
+document.addEventListener('DOMContentLoaded', init);
 
 // ═══════════════════════ INIT ═══════════════════════
 function refreshAll(){loadMarket();loadTape();loadNews();loadCrypto();loadMovers();renderPicks(MOMENTUM_PICKS,'momCards');renderPicks(SWING_PICKS,'swgCards');if(_holdings.length)analyze();}
