@@ -1,0 +1,5 @@
+# one ticker per line; used by: python ingest.py --tickers-file examples/tickers.txt --only
+SPY
+AAPL
+MSFT
+NVDA
